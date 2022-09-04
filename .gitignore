@@ -1,12 +1,12 @@
 *.pyc
-# tmp
+tmp
 
-# .kaggle
-# .env
+.kaggle
+.env
 
-# data/*
-# kaggle/input/*
-# log/*
+data/*
+kaggle/input/*
+log/*
 src/log/*
 
 lightning_logs
