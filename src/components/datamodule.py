@@ -1,38 +1,35 @@
 import numpy as np
 import pandas as pd
+from torchvision.io import read_image
 import torch
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset
 from pytorch_lightning import LightningDataModule
 import traceback
 
-class NlpDataset(Dataset):
-    def __init__(self, df, config, Tokenizer, transform=None):
+class ImgRecogDataset(Dataset):
+    def __init__(self, df, config, transform=None):
         self.config = config
-        self.val = self.read_values(df)
+        self.filepaths = self.read_filepaths(df)
         self.labels = None
         if self.config["label"] in df.keys():
             self.labels = self.read_labels(df)
-        self.tokenizer = Tokenizer.from_pretrained(
-            self.config["base_model_name"],
-            use_fast=self.config["use_fast_tokenizer"]
-        )
         self.transform = transform
 
     def __len__(self):
-        return len(self.val)
+        return len(self.filepaths)
 
     def __getitem__(self, idx):
-        ids, masks = self.tokenize(self.val[idx])
+        imgs = read_image(self.filepaths[idx])
         if self.transform is not None:
-            ids = self.transform(ids)
+            imgs = self.transform(imgs)
         if self.labels is not None:
             labels = self.labels[idx]
-            return ids, masks, labels
-        return ids, masks
+            return imgs, labels
+        return imgs
 
-    def read_values(self, df):
-        values = df["features"].values
+    def read_filepaths(self, df):
+        values = df["filepath"].values
         return values
 
     def read_labels(self, df):
@@ -44,19 +41,6 @@ class NlpDataset(Dataset):
         ).float()
         return labels
 
-    def tokenize(self, text):
-        token = self.tokenizer.encode_plus(
-            text,
-            truncation=True,
-            add_special_tokens=True,
-            max_length=self.config["max_length"],
-            padding="max_length"
-        )
-        ids = torch.tensor(token["input_ids"], dtype=torch.long)
-        masks = torch.tensor(token["attention_mask"], dtype=torch.long)
-        return ids, masks
-
-
 
 class DataModule(LightningDataModule):
     def __init__(
@@ -65,7 +49,6 @@ class DataModule(LightningDataModule):
         df_val,
         df_pred,
         Dataset,
-        Tokenizer,
         config,
         transforms
     ):
@@ -80,7 +63,6 @@ class DataModule(LightningDataModule):
 
         # class
         self.Dataset = Dataset
-        self.Tokenizer = Tokenizer
 
     def read_transforms(self, transforms):
         if transforms is not None:
@@ -91,7 +73,6 @@ class DataModule(LightningDataModule):
         dataset = self.Dataset(
             self.df_train,
             self.config["dataset"],
-            self.Tokenizer,
             self.transforms["train"]
         )
         return DataLoader(dataset, **self.config["train_loader"])
@@ -100,7 +81,6 @@ class DataModule(LightningDataModule):
         dataset = self.Dataset(
             self.df_val,
             self.config["dataset"],
-            self.Tokenizer,
             self.transforms["valid"]
         )
         return DataLoader(dataset, **self.config["val_loader"])
@@ -109,35 +89,30 @@ class DataModule(LightningDataModule):
         dataset = self.Dataset(
             self.df_pred,
             self.config["dataset"],
-            self.Tokenizer,
             self.transforms["pred"]
         )
         return DataLoader(dataset, **self.config["pred_loader"])
 
-class NlpDatasetPseudo(NlpDataset):
-    def __init__(self, df, config, Tokenizer, transform=None):
+class ImgRecogDatasetPseudo(ImgRecogDataset):
+    def __init__(self, df, config, transform=None):
         self.config = config
-        self.val = self.read_values(df)
+        self.filepaths = self.read_filepaths(df)
         self.labels = None
         self.pseudos = None
         if self.config["label"] in df.keys():
             self.labels = self.read_labels(df)
             self.pseudos = df["pseudo"].values
-        self.tokenizer = Tokenizer.from_pretrained(
-            self.config["base_model_name"],
-            use_fast=self.config["use_fast_tokenizer"]
-        )
         self.transform = transform
 
     def __getitem__(self, idx):
-        ids, masks = self.tokenize(self.val[idx])
+        imgs = self.read_filepaths(self.filepaths[idx])
         if self.transform is not None:
             ids = self.transform(ids)
         if self.labels is not None:
             labels = self.labels[idx]
             pseudos = self.pseudos[idx]
-            return ids, masks, labels, pseudos
-        return ids, masks
+            return imgs, labels, pseudos
+        return imgs
 
 class DataModulePseudo(DataModule):
     def __init__(
@@ -146,7 +121,6 @@ class DataModulePseudo(DataModule):
         df_val,
         df_pred,
         Dataset,
-        Tokenizer,
         config,
         transforms
     ):
@@ -155,7 +129,6 @@ class DataModulePseudo(DataModule):
             df_val,
             df_pred,
             Dataset,
-            Tokenizer,
             config,
             transforms
         )

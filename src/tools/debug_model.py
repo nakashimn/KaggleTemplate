@@ -1,33 +1,28 @@
 import sys
 import pathlib
 import torch
-from transformers import AutoTokenizer
+import torchvision.transforms as T
+from torchvision.io import read_image
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
-# from config.distilbert import config
 from config.sample import config
-from components.models import NlpModel
+from components.models import ImgRecogModel
 
 ###
 # sample
 ###
 
-# prepare
-tokenizer = AutoTokenizer.from_pretrained(
-    config["datamodule"]["dataset"]["base_model_name"],
-    use_fast=config["datamodule"]["dataset"]["use_fast_tokenizer"]
-)
+filepath_img = "/workspace/data/img/sample_0.png"
+img = read_image(filepath_img)
 
-# tokenize
-token = tokenizer.encode_plus(
-    "test",
-    truncation=True,
-    add_special_tokens=True,
-    max_length=config["datamodule"]["dataset"]["max_length"],
-    padding="max_length"
-)
-ids = torch.tensor([token["input_ids"]])
-masks = torch.tensor([token["attention_mask"]])
+transforms = T.Compose([
+    T.Resize(224),
+    T.CenterCrop(224),
+    T.ConvertImageDtype(torch.float),
+    T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
+
+img_preprocessed = transforms(img).unsqueeze(dim=0)
 
 # model
-model = NlpModel(config["model"])
-model(ids, masks)
+model = ImgRecogModel(config["model"])
+result = model(img_preprocessed)

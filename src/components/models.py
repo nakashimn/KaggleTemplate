@@ -9,13 +9,13 @@ from torch import nn, optim
 from torch.nn import functional as F
 from torch.utils.checkpoint import checkpoint
 from pytorch_lightning import LightningModule
-from transformers import AutoModel
+import timm
 import traceback
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[0]))
 from loss_functions import FocalLoss, PseudoLoss
 
-class NlpModelBase(LightningModule, metaclass=ABCMeta):
+class ImgRecogModelBase(LightningModule, metaclass=ABCMeta):
     def __init__(self, config):
         super().__init__()
 
@@ -38,20 +38,20 @@ class NlpModelBase(LightningModule, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def forward(self, ids, masks):
+    def forward(self, imgs):
         pass
 
     def training_step(self, batch, batch_idx):
-        ids, masks, labels = batch
-        logits = self.forward(ids, masks)
+        imgs, labels = batch
+        logits = self.forward(imgs)
         loss = self.criterion(logits, labels)
         logit = logits.detach()
         label = labels.detach()
         return {"loss": loss, "logit": logit, "label": label}
 
     def validation_step(self, batch, batch_idx):
-        ids, masks, labels = batch
-        logits = self.forward(ids, masks)
+        imgs, labels = batch
+        logits = self.forward(imgs)
         loss = self.criterion(logits, labels)
         logit = logits.detach()
         prob = logits.softmax(axis=1).detach()
@@ -59,8 +59,8 @@ class NlpModelBase(LightningModule, metaclass=ABCMeta):
         return {"loss": loss, "logit": logit, "prob": prob, "label": label}
 
     def predict_step(self, batch, batch_idx):
-        ids, masks = batch
-        logits = self.forward(ids, masks)
+        imgs = batch
+        logits = self.forward(imgs)
         prob = logits.softmax(axis=1).detach()
         return {"prob": prob}
 
@@ -75,7 +75,7 @@ class NlpModelBase(LightningModule, metaclass=ABCMeta):
         )
         return [optimizer], [scheduler]
 
-class NlpModel(NlpModelBase):
+class ImgRecogModel(ImgRecogModelBase):
     def __init__(self, config):
         super().__init__(config)
 
@@ -83,11 +83,9 @@ class NlpModel(NlpModelBase):
         self.fc = self.create_fully_connected()
 
     def create_base_model(self):
-        base_model = AutoModel.from_pretrained(
-            self.config["base_model_name"],
-            return_dict=False
+        base_model = timm.create_model(
+            self.config["base_model_name"]
         )
-        base_model.gradient_checkpointing_enable()
         if not self.config["freeze_base_model"]:
             return base_model
         for param in base_model.parameters():
@@ -97,9 +95,9 @@ class NlpModel(NlpModelBase):
     def create_fully_connected(self):
         return nn.Linear(self.config["dim_feature"], self.config["num_class"])
 
-    def forward(self, ids, masks):
-        out = self.base_model(ids, masks)
-        out = self.dropout(out[0][:, 0, :])
+    def forward(self, imgs):
+        out = self.base_model(imgs)
+        out = self.dropout(out[0])
         out = self.fc(out)
         return out
 
@@ -124,7 +122,7 @@ class NlpModel(NlpModelBase):
 
         return super().validation_epoch_end(outputs)
 
-class NlpModelPseudo(NlpModelBase):
+class ImgRecogModelPseudo(ImgRecogModelBase):
     def __init__(self, config):
         super().__init__(config)
 
@@ -132,11 +130,9 @@ class NlpModelPseudo(NlpModelBase):
         self.fc = self.create_fully_connected()
 
     def create_base_model(self):
-        base_model = AutoModel.from_pretrained(
-            self.config["base_model_name"],
-            return_dict=False
+        base_model = timm.create_model(
+            self.config["base_model_name"]
         )
-        base_model.gradient_checkpointing_enable()
         if not self.config["freeze_base_model"]:
             return base_model
         for param in base_model.parameters():
@@ -146,15 +142,15 @@ class NlpModelPseudo(NlpModelBase):
     def create_fully_connected(self):
         return nn.Linear(self.config["dim_feature"], self.config["num_class"])
 
-    def forward(self, ids, masks):
-        out = self.base_model(ids, masks)
-        out = self.dropout(out[0][:, 0, :])
+    def forward(self, imgs):
+        out = self.base_model(imgs)
+        out = self.dropout(out[0])
         out = self.fc(out)
         return out
 
     def training_step(self, batch, batch_idx):
-        ids, masks, labels, pseudos = batch
-        logits = self.forward(ids, masks)
+        imgs, labels, pseudos = batch
+        logits = self.forward(imgs)
         loss = self.criterion(logits, labels, pseudos, self.trainer.current_epoch)
         logit = logits.detach()
         label = labels.detach()
@@ -162,8 +158,8 @@ class NlpModelPseudo(NlpModelBase):
         return {"loss": loss, "logit": logit, "label": label, "pseudo": pseudo}
 
     def validation_step(self, batch, batch_idx):
-        ids, masks, labels, pseudos = batch
-        logits = self.forward(ids, masks)
+        imgs, labels, pseudos = batch
+        logits = self.forward(imgs)
         loss = self.criterion(logits, labels, pseudos, self.trainer.current_epoch)
         logit = logits.detach()
         prob = logits.softmax(axis=1).detach()
@@ -211,7 +207,7 @@ class NlpModelPseudo(NlpModelBase):
         self.train()
         return np.concatenate(probs)
 
-class NlpModelFgm(NlpModelBase):
+class ImgRecogModelFgm(ImgRecogModelBase):
     def __init__(self, config):
         super().__init__(config)
 
@@ -221,11 +217,9 @@ class NlpModelFgm(NlpModelBase):
         self.automatic_optimization = False
 
     def create_base_model(self):
-        base_model = AutoModel.from_pretrained(
-            self.config["base_model_name"],
-            return_dict=False
+        base_model = timm.create_model(
+            self.config["base_model_name"]
         )
-        base_model.gradient_checkpointing_enable()
         if not self.config["freeze_base_model"]:
             return base_model
         for param in base_model.parameters():
@@ -235,15 +229,15 @@ class NlpModelFgm(NlpModelBase):
     def create_fully_connected(self):
         return nn.Linear(self.config["dim_feature"], self.config["num_class"])
 
-    def forward(self, ids, masks):
-        out = self.base_model(ids, masks)
-        out = self.dropout(out[0][:, 0, :])
+    def forward(self, imgs):
+        out = self.base_model(imgs)
+        out = self.dropout(out[0])
         out = self.fc(out)
         return out
 
     def training_step(self, batch, batch_idx):
-        ids, masks, labels = batch
-        logits = self.forward(ids, masks)
+        imgs, labels = batch
+        logits = self.forward(imgs)
         opt = self.optimizers()
         opt.zero_grad()
         loss = self.criterion(logits, labels)
@@ -255,9 +249,9 @@ class NlpModelFgm(NlpModelBase):
         return {"loss": loss, "logit": logit, "label": label}
 
     def adversalial_training(self, batch):
-        ids, masks, labels = batch
+        imgs, labels = batch
         self.fgm.attack()
-        logits_adv = self.forward(ids, masks)
+        logits_adv = self.forward(imgs)
         loss_adv = self.criterion(logits_adv, labels)
         self.manual_backward(loss_adv)
         self.fgm.restore()
@@ -322,7 +316,7 @@ class MeanPooling(nn.Module):
         mean_embeddings = sum_embeddings / sum_mask
         return mean_embeddings
 
-class NlpModelMeanPooling(NlpModelBase):
+class ImgRecogModelMeanPooling(ImgRecogModelBase):
     def __init__(self, config):
         super().__init__(config)
 
@@ -331,11 +325,9 @@ class NlpModelMeanPooling(NlpModelBase):
         self.fc = self.create_fully_connected()
 
     def create_base_model(self):
-        base_model = AutoModel.from_pretrained(
-            self.config["base_model_name"],
-            return_dict=True
+        base_model = timm.create_model(
+            self.config["base_model_name"]
         )
-        base_model.gradient_checkpointing_enable()
         if not self.config["freeze_base_model"]:
             return base_model
         for param in base_model.parameters():
@@ -345,9 +337,9 @@ class NlpModelMeanPooling(NlpModelBase):
     def create_fully_connected(self):
         return nn.Linear(self.config["dim_feature"], self.config["num_class"])
 
-    def forward(self, ids, masks):
-        out = self.base_model(ids, masks, output_hidden_states=False)
-        out = self.pooler(out.last_hidden_state, masks)
+    def forward(self, imgs):
+        out = self.base_model(imgs, output_hidden_states=False)
+        out = self.pooler(out.last_hidden_state)
         out = self.dropout(out)
         out = self.fc(out)
         return out
