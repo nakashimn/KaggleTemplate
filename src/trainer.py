@@ -13,18 +13,17 @@ import pytorch_lightning as pl
 from pytorch_lightning import callbacks
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import MLFlowLogger
-from transformers import AutoTokenizer
 from sklearn.model_selection import StratifiedKFold, StratifiedGroupKFold, GroupKFold
 import traceback
 
 from components.preprocessor import DataPreprocessor
-from components.datamodule import NlpDataset, DataModule
-from components.models import NlpModel
+from components.datamodule import ImgRecogDataset, DataModule
+from components.models import ImgRecogModel
 from components.validations import MinLoss, ValidResult, ConfusionMatrix, F1Score, LogLoss
 
 class Trainer:
     def __init__(
-        self, Model, DataModule, Dataset, Tokenizer, ValidResult, MinLoss,
+        self, Model, DataModule, Dataset, ValidResult, MinLoss,
         df_train, config, transforms, mlflow_logger
     ):
         # const
@@ -40,7 +39,6 @@ class Trainer:
         self.Model = Model
         self.DataModule = DataModule
         self.Dataset = Dataset
-        self.Tokenizer = Tokenizer
         self.MinLoss = MinLoss
         self.ValidResult = ValidResult
 
@@ -80,7 +78,6 @@ class Trainer:
             datamodule = self._create_datamodule_with_alldata()
             self._train_without_valid(datamodule, self.min_loss.value)
 
-
     def _create_datamodule(self, idx_train, idx_val):
         df_train_fold = self.df_train.loc[idx_train].reset_index(drop=True)
         df_val_fold = self.df_train.loc[idx_val].reset_index(drop=True)
@@ -89,7 +86,6 @@ class Trainer:
             df_val=df_val_fold,
             df_pred=None,
             Dataset=self.Dataset,
-            Tokenizer=self.Tokenizer,
             config=self.config["datamodule"],
             transforms=self.transforms
         )
@@ -102,7 +98,6 @@ class Trainer:
             df_val=df_val_dummy,
             df_pred=None,
             Dataset=self.Dataset,
-            Tokenizer=self.Tokenizer,
             config=self.config["datamodule"],
             transforms=self.transforms
         )
@@ -258,10 +253,9 @@ if __name__=="__main__":
 
     # Training
     trainer = Trainer(
-        NlpModel,
+        ImgRecogModel,
         DataModule,
-        NlpDataset,
-        AutoTokenizer,
+        ImgRecogDataset,
         ValidResult,
         MinLoss,
         df_train,

@@ -1,11 +1,8 @@
 config = {
     "n_splits": 3,
+    "train_fold": [0, 1, 2],
+    "valid_fold": [0, 1, 2],
     "random_seed": 57,
-    "id": "<id>",
-    "features": [
-        "<featureA>",
-        "<featureB>"
-    ],
     "label": "<label>",
     "group": "<group>",
     "labels": [
@@ -25,7 +22,7 @@ config = {
 }
 config["model"] = {
     "base_model_name": "/kaggle/input/<BaseModelDir>",
-    "dim_feature": 768,
+    "dim_feature": 1000,
     "num_class": 3,
     "dropout_rate": 0.5,
     "freeze_base_model": False,
@@ -85,6 +82,7 @@ config["datamodule"] = {
         "num_class": config["model"]["num_class"],
         "features": config["features"],
         "label": config["label"],
+        "labels": config["labels"],
         "use_fast_tokenizer": True,
         "max_length": 512
     },

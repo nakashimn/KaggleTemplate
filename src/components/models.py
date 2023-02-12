@@ -9,11 +9,15 @@ from torch import nn, optim
 from torch.nn import functional as F
 from torch.utils.checkpoint import checkpoint
 from pytorch_lightning import LightningModule
-import timm
+from transformers import ViTForImageClassification
 import traceback
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[0]))
 from loss_functions import FocalLoss, PseudoLoss
+
+################################################################################
+# Base Class
+################################################################################
 
 class ImgRecogModelBase(LightningModule, metaclass=ABCMeta):
     def __init__(self, config):
@@ -42,16 +46,16 @@ class ImgRecogModelBase(LightningModule, metaclass=ABCMeta):
         pass
 
     def training_step(self, batch, batch_idx):
-        imgs, labels = batch
-        logits = self.forward(imgs)
+        features, labels = batch
+        logits = self.forward(features)
         loss = self.criterion(logits, labels)
         logit = logits.detach()
         label = labels.detach()
         return {"loss": loss, "logit": logit, "label": label}
 
     def validation_step(self, batch, batch_idx):
-        imgs, labels = batch
-        logits = self.forward(imgs)
+        features, labels = batch
+        logits = self.forward(features)
         loss = self.criterion(logits, labels)
         logit = logits.detach()
         prob = logits.softmax(axis=1).detach()
@@ -59,8 +63,8 @@ class ImgRecogModelBase(LightningModule, metaclass=ABCMeta):
         return {"loss": loss, "logit": logit, "prob": prob, "label": label}
 
     def predict_step(self, batch, batch_idx):
-        imgs = batch
-        logits = self.forward(imgs)
+        features = batch
+        logits = self.forward(features)
         prob = logits.softmax(axis=1).detach()
         return {"prob": prob}
 
@@ -75,6 +79,10 @@ class ImgRecogModelBase(LightningModule, metaclass=ABCMeta):
         )
         return [optimizer], [scheduler]
 
+################################################################################
+# Basic
+################################################################################
+
 class ImgRecogModel(ImgRecogModelBase):
     def __init__(self, config):
         super().__init__(config)
@@ -83,7 +91,7 @@ class ImgRecogModel(ImgRecogModelBase):
         self.fc = self.create_fully_connected()
 
     def create_base_model(self):
-        base_model = timm.create_model(
+        base_model = ViTForImageClassification.from_pretrained(
             self.config["base_model_name"]
         )
         if not self.config["freeze_base_model"]:
@@ -95,8 +103,8 @@ class ImgRecogModel(ImgRecogModelBase):
     def create_fully_connected(self):
         return nn.Linear(self.config["dim_feature"], self.config["num_class"])
 
-    def forward(self, imgs):
-        out = self.base_model(imgs)
+    def forward(self, features):
+        out = self.base_model(**features)
         out = self.dropout(out[0])
         out = self.fc(out)
         return out
@@ -122,6 +130,11 @@ class ImgRecogModel(ImgRecogModelBase):
 
         return super().validation_epoch_end(outputs)
 
+
+################################################################################
+# Pseudo
+################################################################################
+
 class ImgRecogModelPseudo(ImgRecogModelBase):
     def __init__(self, config):
         super().__init__(config)
@@ -130,7 +143,7 @@ class ImgRecogModelPseudo(ImgRecogModelBase):
         self.fc = self.create_fully_connected()
 
     def create_base_model(self):
-        base_model = timm.create_model(
+        base_model = ViTForImageClassification.from_pretrained(
             self.config["base_model_name"]
         )
         if not self.config["freeze_base_model"]:
@@ -142,15 +155,15 @@ class ImgRecogModelPseudo(ImgRecogModelBase):
     def create_fully_connected(self):
         return nn.Linear(self.config["dim_feature"], self.config["num_class"])
 
-    def forward(self, imgs):
-        out = self.base_model(imgs)
+    def forward(self, features):
+        out = self.base_model(**features)
         out = self.dropout(out[0])
         out = self.fc(out)
         return out
 
     def training_step(self, batch, batch_idx):
-        imgs, labels, pseudos = batch
-        logits = self.forward(imgs)
+        features, labels, pseudos = batch
+        logits = self.forward(features)
         loss = self.criterion(logits, labels, pseudos, self.trainer.current_epoch)
         logit = logits.detach()
         label = labels.detach()
@@ -158,8 +171,8 @@ class ImgRecogModelPseudo(ImgRecogModelBase):
         return {"loss": loss, "logit": logit, "label": label, "pseudo": pseudo}
 
     def validation_step(self, batch, batch_idx):
-        imgs, labels, pseudos = batch
-        logits = self.forward(imgs)
+        features, labels, pseudos = batch
+        logits = self.forward(features)
         loss = self.criterion(logits, labels, pseudos, self.trainer.current_epoch)
         logit = logits.detach()
         prob = logits.softmax(axis=1).detach()
@@ -207,6 +220,10 @@ class ImgRecogModelPseudo(ImgRecogModelBase):
         self.train()
         return np.concatenate(probs)
 
+################################################################################
+# Fast Gradient Method
+################################################################################
+
 class ImgRecogModelFgm(ImgRecogModelBase):
     def __init__(self, config):
         super().__init__(config)
@@ -217,7 +234,7 @@ class ImgRecogModelFgm(ImgRecogModelBase):
         self.automatic_optimization = False
 
     def create_base_model(self):
-        base_model = timm.create_model(
+        base_model = ViTForImageClassification.from_pretrained(
             self.config["base_model_name"]
         )
         if not self.config["freeze_base_model"]:
@@ -229,15 +246,15 @@ class ImgRecogModelFgm(ImgRecogModelBase):
     def create_fully_connected(self):
         return nn.Linear(self.config["dim_feature"], self.config["num_class"])
 
-    def forward(self, imgs):
-        out = self.base_model(imgs)
+    def forward(self, features):
+        out = self.base_model(**features)
         out = self.dropout(out[0])
         out = self.fc(out)
         return out
 
     def training_step(self, batch, batch_idx):
-        imgs, labels = batch
-        logits = self.forward(imgs)
+        features, labels = batch
+        logits = self.forward(features)
         opt = self.optimizers()
         opt.zero_grad()
         loss = self.criterion(logits, labels)
@@ -249,9 +266,9 @@ class ImgRecogModelFgm(ImgRecogModelBase):
         return {"loss": loss, "logit": logit, "label": label}
 
     def adversalial_training(self, batch):
-        imgs, labels = batch
+        features, labels = batch
         self.fgm.attack()
-        logits_adv = self.forward(imgs)
+        logits_adv = self.forward(features)
         loss_adv = self.criterion(logits_adv, labels)
         self.manual_backward(loss_adv)
         self.fgm.restore()
@@ -303,6 +320,9 @@ class FGM:
                 param.data = self.backup[name]
             self.backup = {}
 
+################################################################################
+# MeanPooling
+################################################################################
 
 class MeanPooling(nn.Module):
     def __init__(self):
@@ -325,7 +345,7 @@ class ImgRecogModelMeanPooling(ImgRecogModelBase):
         self.fc = self.create_fully_connected()
 
     def create_base_model(self):
-        base_model = timm.create_model(
+        base_model = ViTForImageClassification.from_pretrained(
             self.config["base_model_name"]
         )
         if not self.config["freeze_base_model"]:
@@ -337,8 +357,8 @@ class ImgRecogModelMeanPooling(ImgRecogModelBase):
     def create_fully_connected(self):
         return nn.Linear(self.config["dim_feature"], self.config["num_class"])
 
-    def forward(self, imgs):
-        out = self.base_model(imgs, output_hidden_states=False)
+    def forward(self, features):
+        out = self.base_model(**features, output_hidden_states=False)
         out = self.pooler(out.last_hidden_state)
         out = self.dropout(out)
         out = self.fc(out)

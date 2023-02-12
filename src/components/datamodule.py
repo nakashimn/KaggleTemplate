@@ -5,12 +5,18 @@ import torch
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset
 from pytorch_lightning import LightningDataModule
+from transformers import ViTFeatureExtractor
 import traceback
+
+################################################################################
+# Basic
+################################################################################
 
 class ImgRecogDataset(Dataset):
     def __init__(self, df, config, transform=None):
         self.config = config
         self.filepaths = self.read_filepaths(df)
+        self.feature_extractor = self.create_feature_extractor()
         self.labels = None
         if self.config["label"] in df.keys():
             self.labels = self.read_labels(df)
@@ -23,24 +29,35 @@ class ImgRecogDataset(Dataset):
         imgs = read_image(self.filepaths[idx])
         if self.transform is not None:
             imgs = self.transform(imgs)
+        features = self.extract_features(imgs)
         if self.labels is not None:
             labels = self.labels[idx]
-            return imgs, labels
-        return imgs
+            return features, labels
+        return features
 
     def read_filepaths(self, df):
         values = df["filepath"].values
         return values
 
+    def create_feature_extractor(self):
+        feature_extractor = ViTFeatureExtractor.from_pretrained(
+            self.config["base_model_name"]
+        )
+        return feature_extractor
+
+    def extract_features(self, imgs):
+        features = self.feature_extractor(imgs, return_tensors="pt")
+        features["pixel_values"] = features["pixel_values"].squeeze()
+        return features
+
     def read_labels(self, df):
         labels = F.one_hot(
             torch.tensor(
-                [self.config[self.config["label"]][d] for d in df[self.config["label"]]]
+                [self.config["labels"].index(d) for d in df[self.config["label"]]]
             ),
             num_classes=self.config["num_class"]
         ).float()
         return labels
-
 
 class DataModule(LightningDataModule):
     def __init__(
@@ -93,6 +110,10 @@ class DataModule(LightningDataModule):
         )
         return DataLoader(dataset, **self.config["pred_loader"])
 
+################################################################################
+# Pseudo
+################################################################################
+
 class ImgRecogDatasetPseudo(ImgRecogDataset):
     def __init__(self, df, config, transform=None):
         self.config = config
@@ -105,14 +126,16 @@ class ImgRecogDatasetPseudo(ImgRecogDataset):
         self.transform = transform
 
     def __getitem__(self, idx):
+        imgs = read_image(self.filepaths[idx])
         imgs = self.read_filepaths(self.filepaths[idx])
         if self.transform is not None:
             ids = self.transform(ids)
+        features = self.extract_features(imgs)
         if self.labels is not None:
             labels = self.labels[idx]
             pseudos = self.pseudos[idx]
-            return imgs, labels, pseudos
-        return imgs
+            return features, labels, pseudos
+        return features
 
 class DataModulePseudo(DataModule):
     def __init__(
