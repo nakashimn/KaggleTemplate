@@ -1,9 +1,9 @@
 ipykernel
 ipywidgets
-protobuf
-pyyaml
+protobuf<4.21.0
+pyyaml<6.0
 tqdm
-numpy
+numpy==1.22
 pandas
 matplotlib
 seaborn

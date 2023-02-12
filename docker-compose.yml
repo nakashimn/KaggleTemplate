@@ -15,8 +15,7 @@ services:
       - ./:/workspace:cached
       - ./kaggle:/kaggle:cached
       - ${DATASTORAGE_PATH}:/data_storage:cached
-      - ${MLFLOW_STORAGE_PATH}:/content/drive/MyDrive/Colab Notebooks/mlruns
-      - ${MLFLOW_STORAGE_PATH}:/workspace/log/google_drive/mlruns
+      - ${MLFLOW_STORAGE_PATH}:/workspace/log/local/mlruns
     environment:
       TZ: Asia/Tokyo
       KAGGLE_USERNAME: ${KAGGLE_USERNAME}
