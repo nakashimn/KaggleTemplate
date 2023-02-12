@@ -13,7 +13,7 @@ from transformers import ViTForImageClassification
 import traceback
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[0]))
-from loss_functions import FocalLoss, PseudoLoss
+from loss_functions import FocalLoss
 
 ################################################################################
 # Base Class
