@@ -5,7 +5,7 @@ import torchvision.transforms as T
 from torchvision.io import read_image
 from transformers import ViTFeatureExtractor, ViTForImageClassification
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
-from config.sample_img import config
+from config.sample import config
 from components.models import ImgRecogModel
 
 ###
