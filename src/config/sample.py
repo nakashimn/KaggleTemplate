@@ -1,29 +1,29 @@
 config = {
-    "n_splits": 3,
-    "train_fold": [0, 1, 2],
-    "valid_fold": [0, 1, 2],
+    "n_splits": 2,
+    "train_fold": [0, 1],
+    "valid_fold": [0, 1],
     "random_seed": 57,
-    "label": "<label>",
-    "group": "<group>",
+    "label": "class",
+    "group": "group",
     "labels": [
-        "labelA",
-        "labelB"
+        "A",
+        "B"
     ],
     "experiment_name": "sample-v0",
     "path": {
-        "traindata": "/kaggle/input/<TrainData.csv>",
-        "testdata": "/kaggle/input/<TestData.csv>",
+        "traindata": "/workspace/data/sample/labels.csv",
+        "testdata": "/workspace/data/sample/labels.csv",
         "temporal_dir": "../tmp/artifacts/",
-        "model_dir": "/kaggle/input/<ModelDir>/"
+        "model_dir": "/workspace/data/model/sample/"
     },
     "modelname": "best_loss",
     "pred_ensemble": True,
     "train_with_alldata": False
 }
 config["model"] = {
-    "base_model_name": "/kaggle/input/<BaseModelDir>",
+    "base_model_name": "WinKawaks/vit-tiny-patch16-224",
     "dim_feature": 1000,
-    "num_class": 3,
+    "num_class": 2,
     "dropout_rate": 0.5,
     "freeze_base_model": False,
     "loss": {
@@ -80,14 +80,13 @@ config["datamodule"] = {
     "dataset":{
         "base_model_name": config["model"]["base_model_name"],
         "num_class": config["model"]["num_class"],
-        "features": config["features"],
         "label": config["label"],
         "labels": config["labels"],
         "use_fast_tokenizer": True,
         "max_length": 512
     },
     "train_loader": {
-        "batch_size": 16,
+        "batch_size": 2,
         "shuffle": True,
         "num_workers": 16,
         "pin_memory": True,
