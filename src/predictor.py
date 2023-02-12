@@ -111,9 +111,8 @@ if __name__=="__main__":
 
     # Setting Dataset
     data_preprocessor = DataPreprocessor(config)
-    # df_test = data_preprocessor.test_dataset()
-    df_test = data_preprocessor.train_dataset()
-    df_test = df_test.drop(config["label"], axis=1)
+    df_test = data_preprocessor.test_dataset()
+    # df_test = df_test.drop(config["label"], axis=1)
 
     # Prediction
     if config["pred_ensemble"]:

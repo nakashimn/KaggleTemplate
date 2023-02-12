@@ -13,7 +13,3 @@ class DataPreprocessor:
     def test_dataset(self):
         df_test = pd.read_csv(self.config["path"]["testdata"])
         return df_test
-
-    def pseudo_dataset(self):
-        # Inplement
-        return None
