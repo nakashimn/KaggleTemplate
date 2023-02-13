@@ -26,14 +26,14 @@ class ImgRecogDataset(Dataset):
         return len(self.filepaths)
 
     def __getitem__(self, idx):
-        imgs = read_image(self.filepaths[idx])
+        img = read_image(self.filepaths[idx])
         if self.transform is not None:
-            imgs = self.transform(imgs)
-        features = self.extract_features(imgs)
+            img = self.transform(img)
+        feature = self.extract_feature(img)
         if self.labels is not None:
             labels = self.labels[idx]
-            return features, labels
-        return features
+            return feature, labels
+        return feature
 
     def read_filepaths(self, df):
         values = df["filepath"].values
@@ -45,10 +45,10 @@ class ImgRecogDataset(Dataset):
         )
         return feature_extractor
 
-    def extract_features(self, imgs):
-        features = self.feature_extractor(imgs, return_tensors="pt")
-        features["pixel_values"] = features["pixel_values"].squeeze()
-        return features
+    def extract_feature(self, imgs):
+        feature = self.feature_extractor(imgs, return_tensors="pt")
+        feature["pixel_values"] = feature["pixel_values"].squeeze()
+        return feature
 
     def read_labels(self, df):
         labels = F.one_hot(
