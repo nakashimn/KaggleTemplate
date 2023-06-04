@@ -22,7 +22,7 @@ class EfficientNetModel(LightningModule):
 
         # const
         self.config = config
-        self.bn, self.encoder, self.fc = self._create_model()
+        self.encoder, self.fc = self._create_model()
         self.criterion = eval(config["loss"]["name"])(**self.config["loss"]["params"])
 
         # augmentation
@@ -32,27 +32,27 @@ class EfficientNetModel(LightningModule):
         )
 
         # variables
+        self.training_step_outputs = []
+        self.validation_step_outputs = []
         self.val_probs = np.nan
         self.val_labels = np.nan
         self.min_loss = np.nan
 
     def _create_model(self):
-        # batch_normalization
-        bn = nn.BatchNorm2d(self.config["n_mels"])
         # basemodel
         base_model = timm.create_model(
             self.config["base_model_name"],
             pretrained=True,
             num_classes=0,
             global_pool="",
-            in_chans=1
+            in_chans=3
         )
         layers = list(base_model.children())[:-2]
         encoder = nn.Sequential(*layers)
         # linear
         fc = nn.Sequential(
             nn.Linear(
-                encoder[-1].num_features * 10,
+                encoder[-1].num_features * 7,
                 self.config["fc_mid_dim"],
                 bias=True
             ),
@@ -63,13 +63,10 @@ class EfficientNetModel(LightningModule):
                 bias=True
             )
         )
-        return bn, encoder, fc
+        return encoder, fc
 
     def forward(self, input_data):
-        x = input_data[:, [0], :, :]
-        x = x.transpose(1, 2)
-        x = self.bn(x)
-        x = x.transpose(1, 2)
+        x = input_data
         x = self.encoder(x)
         x = x.mean(dim=2)
         x = x.flatten(start_dim=1)
@@ -84,7 +81,9 @@ class EfficientNetModel(LightningModule):
         loss = self.criterion(logits, labels)
         logit = logits.detach()
         label = labels.detach()
-        return {"loss": loss, "logit": logit, "label": label}
+        outputs = {"loss": loss, "logit": logit, "label": label}
+        self.training_step_outputs.append(outputs)
+        return outputs
 
     def validation_step(self, batch, batch_idx):
         img, labels = batch
@@ -93,7 +92,9 @@ class EfficientNetModel(LightningModule):
         logit = logits.detach()
         prob = logits.softmax(axis=1).detach()
         label = labels.detach()
-        return {"loss": loss, "logit": logit, "prob": prob, "label": label}
+        outputs = {"loss": loss, "logit": logit, "prob": prob, "label": label}
+        self.validation_step_outputs.append(outputs)
+        return outputs
 
     def predict_step(self, batch, batch_idx):
         img = batch
@@ -101,26 +102,26 @@ class EfficientNetModel(LightningModule):
         prob = logits.softmax(axis=1).detach()
         return {"prob": prob}
 
-    def training_epoch_end(self, outputs):
-        logits = torch.cat([out["logit"] for out in outputs])
-        labels = torch.cat([out["label"] for out in outputs])
+    def on_train_epoch_end(self):
+        logits = torch.cat([out["logit"] for out in self.training_step_outputs])
+        labels = torch.cat([out["label"] for out in self.training_step_outputs])
         metrics = self.criterion(logits, labels)
         self.min_loss = np.nanmin([self.min_loss, metrics.detach().cpu().numpy()])
         self.log(f"train_loss", metrics)
 
-        return super().training_epoch_end(outputs)
+        return super().on_train_epoch_end()
 
-    def validation_epoch_end(self, outputs):
-        logits = torch.cat([out["logit"] for out in outputs])
-        probs = torch.cat([out["prob"] for out in outputs])
-        labels = torch.cat([out["label"] for out in outputs])
+    def on_validation_epoch_end(self):
+        logits = torch.cat([out["logit"] for out in self.validation_step_outputs])
+        probs = torch.cat([out["prob"] for out in self.validation_step_outputs])
+        labels = torch.cat([out["label"] for out in self.validation_step_outputs])
         metrics = self.criterion(logits, labels)
         self.log(f"val_loss", metrics)
 
         self.val_probs = probs.detach().cpu().numpy()
         self.val_labels = labels.detach().cpu().numpy()
 
-        return super().validation_epoch_end(outputs)
+        return super().on_validation_epoch_end()
 
     def configure_optimizers(self):
         optimizer = eval(self.config["optimizer"]["name"])(

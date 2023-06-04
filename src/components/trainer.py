@@ -55,6 +55,40 @@ class Trainer:
             print(traceback.format_exc())
             raise
 
+    def _run_unit(self, fold=None, idx_train=None, idx_val=None):
+        # create logger
+        mlflow_logger = self._create_mlflow_logger(fold)
+
+        try:
+            # create datamodule
+            transforms = self._create_transforms()
+            datamodule = self._create_datamodule(idx_train, idx_val, transforms=transforms)
+
+            # train crossvalid models
+            min_loss = self._train(datamodule, fold=fold, logger=mlflow_logger)
+            self.min_loss.update(min_loss)
+
+            # valid
+            if datamodule.val_dataloader() is not None:
+                val_probs, val_labels = self._valid(datamodule, fold=fold, logger=mlflow_logger)
+                self.val_probs.append(val_probs)
+                self.val_labels.append(val_labels)
+
+            # log
+            mlflow_logger.finalize("FINISHED")
+
+        except KeyboardInterrupt:
+            print(traceback.format_exc())
+            mlflow_logger.finalize("KILLED")
+            mlflow_logger.experiment.delete_run(mlflow_logger.run_id)
+            raise
+
+        except:
+            print(traceback.format_exc())
+            mlflow_logger.finalize("FAILED")
+            mlflow_logger.experiment.delete_run(mlflow_logger.run_id)
+            raise
+
     def _create_mlflow_logger(self, fold=None):
         # create Logger instance
         experiment_name = f"{self.config['experiment_name']} [{self.timestamp}]"
@@ -167,41 +201,6 @@ class Trainer:
             earlystopping, lr_monitor, loss_checkpoint, model_uploader
         ]
         return callback_list
-
-    def _run_unit(self, fold=None, idx_train=None, idx_val=None):
-        # create logger
-        mlflow_logger = self._create_mlflow_logger(fold)
-
-        try:
-            # create datamodule
-            transforms = self._create_transforms()
-            datamodule = self._create_datamodule(idx_train, idx_val, transforms=transforms)
-
-            # train crossvalid models
-            min_loss = self._train(datamodule, fold=fold, logger=mlflow_logger)
-            self.min_loss.update(min_loss)
-
-            # valid
-            if datamodule.val_dataloader() is not None:
-                val_probs, val_labels = self._valid(datamodule, fold=fold, logger=mlflow_logger)
-                self.val_probs.append(val_probs)
-                self.val_labels.append(val_labels)
-
-            # log
-            mlflow_logger.finalize("FINISHED")
-
-        except KeyboardInterrupt:
-            print(traceback.format_exc())
-            mlflow_logger.finalize("KILLED")
-            mlflow_logger.experiment.delete_run(mlflow_logger.run_id)
-            raise
-
-        except:
-            print(traceback.format_exc())
-            mlflow_logger.finalize("FAILED")
-            mlflow_logger.experiment.delete_run(mlflow_logger.run_id)
-            raise
-
 
     def _train(self, datamodule, fold=None, min_delta=0.0, min_loss=None, logger=None):
         # switch mode

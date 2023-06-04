@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import cv2
 import librosa
 import torch
 from torch.nn import functional as F
@@ -10,9 +11,55 @@ from pytorch_lightning import LightningDataModule
 import traceback
 
 ################################################################################
-# For EfficientNetBaseModel
+# For EfficientNetBaseModel(Image)
 ################################################################################
 class ImgDataset(Dataset):
+    def __init__(self, df, config, transform=None):
+        self.config = config
+        self.filepaths = self._read_filepaths(df)
+        self.labels = None
+        if self.config["label"] in df.keys():
+            self.labels = self._read_labels(df[self.config["label"]])
+        self.pre_transform = A.Compose(
+            [A.Normalize(config["mean"], config["std"])]
+        )
+        self.to_tensor = Tv.ToTensor()
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.filepaths)
+
+    def __getitem__(self, idx):
+        img = self._read_img(self.filepaths[idx])
+        img = self.pre_transform(image=img)["image"]
+        img = self.to_tensor(img)
+        if self.transform is not None:
+            img = self.transform(img)
+        if self.labels is not None:
+            labels = self.labels[idx]
+            return img, labels
+        return img
+
+    def _read_filepaths(self, df):
+        values = df["filepath"].values
+        return values
+
+    def _read_img(self, filepath):
+        img = cv2.imread(filepath)
+        return img
+
+    def _read_labels(self, df):
+        labels = torch.tensor(df.apply(self._to_onehot), dtype=torch.float32)
+        return labels
+
+    def _to_onehot(self, series):
+        return [1 if l in series else 0 for l in self.config["labels"]]
+
+
+################################################################################
+# For EfficientNetBaseModel(Audio)
+################################################################################
+class AudioDataset(Dataset):
     def __init__(self, df, config, transform=None):
         self.config = config
         self.filepaths = self._read_filepaths(df)

@@ -5,6 +5,9 @@ from torchvision import transforms as Tv
 from torchaudio import transforms as Ta
 import traceback
 
+################################################################################
+# AudioAugmentation
+################################################################################
 class SoundAugmentation:
     def __init__(
         self,
@@ -125,14 +128,14 @@ class Mixup:
     def __call__(self, melspec, label):
         return self.run(melspec, label)
 
-    def run(self, melspec, label):
+    def run(self, img, label):
         lam = self.rand_generator.sample()
-        melspec_mixup = lam * melspec + (1 - lam) * melspec.roll(shifts=1, dims=0)
+        img_mixup = lam * img + (1 - lam) * img.roll(shifts=1, dims=0)
         label_mixup = lam * label + (1 - lam) * label.roll(shifts=1, dims=0)
-        return melspec_mixup, label_mixup
+        return img_mixup, label_mixup
 
 class LabelSmoothing:
-    def __init__(self, eps=0.01, n_class=265, device="cuda"):
+    def __init__(self, eps=0.01, n_class=3, device="cuda"):
         eyes = torch.eye(n_class)
         self.softlabels = torch.where(eyes<=0, eps/(n_class-1), 1-eps).to(torch.float32).to(device)
 
@@ -199,7 +202,11 @@ class SpecAugmentation:
         return self.run(melspec, label)
 
     def run(self, melspec, label=None):
-        if label is None:
-            return self.spec_transform(melspec)
-        melspec = self.spec_transform(melspec)
-        return melspec, label
+        if self.spec_transform is None:
+            if label is None:
+                return melspec
+            return melspec, label
+        else:
+            if label is None:
+                return self.spec_transform(melspec)
+            return self.spec_transform(melspec), label

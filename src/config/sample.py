@@ -1,14 +1,15 @@
 config = {
     "random_seed": 57,
     "pred_device": "cuda",
-    "label": "labels",
+    "label": "label",
     "labels": ["A", "B", "C"],
     "experiment_name": "sample",
     "path": {
-        "traindata": "/kaggle/input/sample/",
-        "trainmeta": "/kaggle/input/train_metadata.csv",
-        "testdata": "/kaggle/input/sample/",
-        "preddata": "/kaggle/input/submission/",
+        "traindata": "/workspace/data/sample/img/",
+        "trainmeta": "/workspace/data/sample/labels.csv",
+        "testdata": "/workspace/data/sample/img/",
+        "testmeta": "/workspace/data/sample/labels.csv",
+        "preddata": "/workspace/data/sample/img/",
         "temporal_dir": "../tmp/artifacts/",
         "model_dir": "/kaggle/input/model/",
         "ckpt_dir": "/workspace/tmp/checkpoint/"
@@ -25,9 +26,16 @@ config["augmentation"] = {
 }
 config["model"] = {
     "ClassName": "EfficientNetModel",
-    "base_model_name": None,
+    "base_model_name": "tf_efficientnet_b0_ns",
     "num_class": len(config["labels"]),
+    "fc_mid_dim": 1024,
     "gradient_checkpointing": True,
+    "mixup": {
+        "alpha": 0.2
+    },
+    "label_smoothing": {
+        "eps": 0.01
+    },
     "loss": {
         "name": "nn.CrossEntropyLoss",
         "params": {
@@ -61,8 +69,8 @@ config["checkpoint"] = {
 config["trainer"] = {
     "accelerator": "gpu",
     "devices": 1,
-    "max_epochs": 100,
-    "accumulate_grad_batches": 8,
+    "max_epochs": 10,
+    "accumulate_grad_batches": 1,
     "deterministic": False,
     "precision": 32
 }
@@ -79,7 +87,7 @@ config["datamodule"] = {
         "std": 0.229
     },
     "dataloader": {
-        "batch_size": 32,
+        "batch_size": 2,
         "num_workers": 8
     }
 }
