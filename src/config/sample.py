@@ -1,31 +1,33 @@
 config = {
-    "n_splits": 2,
-    "train_fold": [0, 1],
-    "valid_fold": [0, 1],
     "random_seed": 57,
-    "label": "class",
-    "group": "group",
-    "labels": [
-        "A",
-        "B"
-    ],
-    "experiment_name": "sample-v0",
+    "pred_device": "cuda",
+    "label": "labels",
+    "labels": ["A", "B", "C"],
+    "experiment_name": "sample",
     "path": {
-        "traindata": "/workspace/data/sample/labels.csv",
-        "testdata": "/workspace/data/sample/labels.csv",
+        "traindata": "/kaggle/input/sample/",
+        "trainmeta": "/kaggle/input/train_metadata.csv",
+        "testdata": "/kaggle/input/sample/",
+        "preddata": "/kaggle/input/submission/",
         "temporal_dir": "../tmp/artifacts/",
-        "model_dir": "/workspace/data/model/sample/"
+        "model_dir": "/kaggle/input/model/",
+        "ckpt_dir": "/workspace/tmp/checkpoint/"
     },
     "modelname": "best_loss",
-    "pred_ensemble": True,
-    "train_with_alldata": False
+    "init_with_checkpoint": False,
+    "resume": False,
+    "upload_every_n_epochs": 5,
+    "pred_ensemble": False,
+    "train_with_alldata": True
+}
+config["augmentation"] = {
+    "ClassName": "SpecAugmentation"
 }
 config["model"] = {
-    "base_model_name": "WinKawaks/vit-tiny-patch16-224",
-    "dim_feature": 1000,
-    "num_class": 2,
-    "dropout_rate": 0.5,
-    "freeze_base_model": False,
+    "ClassName": "EfficientNetModel",
+    "base_model_name": None,
+    "num_class": len(config["labels"]),
+    "gradient_checkpointing": True,
     "loss": {
         "name": "nn.CrossEntropyLoss",
         "params": {
@@ -35,23 +37,22 @@ config["model"] = {
     "optimizer":{
         "name": "optim.RAdam",
         "params":{
-            "lr": 1e-5
+            "lr": 1e-3
         },
     },
     "scheduler":{
         "name": "optim.lr_scheduler.CosineAnnealingWarmRestarts",
         "params":{
-            "T_0": 20,
-            "eta_min": 1e-4,
+            "T_0": 40,
+            "eta_min": 0,
         }
     }
 }
 config["earlystopping"] = {
-    "patience": 1
+    "patience": 3
 }
 config["checkpoint"] = {
-    "dirpath": config["path"]["temporal_dir"],
-    "monitor": "val_loss",
+    "dirpath": config["path"]["model_dir"],
     "save_top_k": 1,
     "mode": "min",
     "save_last": False,
@@ -61,52 +62,26 @@ config["trainer"] = {
     "accelerator": "gpu",
     "devices": 1,
     "max_epochs": 100,
-    "accumulate_grad_batches": 1,
-    "fast_dev_run": False,
-    "deterministic": True,
-    "num_sanity_val_steps": 0,
-    "resume_from_checkpoint": None,
-    "precision": 16
-}
-config["kfold"] = {
-    "name": "StratifiedGroupKFold",
-    "params": {
-        "n_splits": config["n_splits"],
-        "shuffle": True,
-        "random_state": config["random_seed"]
-    }
+    "accumulate_grad_batches": 8,
+    "deterministic": False,
+    "precision": 32
 }
 config["datamodule"] = {
+    "ClassName": "DataModule",
     "dataset":{
+        "ClassName": "ImgDataset",
         "base_model_name": config["model"]["base_model_name"],
         "num_class": config["model"]["num_class"],
         "label": config["label"],
         "labels": config["labels"],
-        "use_fast_tokenizer": True,
-        "max_length": 512
+        "path": config["path"],
+        "mean": 0.485,
+        "std": 0.229
     },
-    "train_loader": {
-        "batch_size": 2,
-        "shuffle": True,
-        "num_workers": 16,
-        "pin_memory": True,
-        "drop_last": True,
-    },
-    "val_loader": {
-        "batch_size": 16,
-        "shuffle": False,
-        "num_workers": 16,
-        "pin_memory": True,
-        "drop_last": False
-    },
-    "pred_loader": {
-        "batch_size": 16,
-        "shuffle": False,
-        "num_workers": 16,
-        "pin_memory": False,
-        "drop_last": False
+    "dataloader": {
+        "batch_size": 32,
+        "num_workers": 8
     }
 }
 config["Metrics"] = {
-    "label": config["labels"]
 }

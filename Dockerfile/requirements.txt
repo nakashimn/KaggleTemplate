@@ -1,21 +1,38 @@
+# debug
 ipykernel
 ipywidgets
 protobuf<4.21.0
 pyyaml<6.0
+
+# utility
 tqdm
-numpy==1.22
+kaggle
+black
+
+# data analysis
+numpy
 pandas
 matplotlib
 seaborn
-kaggle
-opencv-python
-lightgbm
-torch
-torchvision
-pytorch-lightning
-pytorch-tabnet
-transformers
-sentencepiece
-optuna
 mlflow
-black
+
+# deeplearning
+torch
+pytorch-lightning
+transformers
+optuna
+albumentations
+lightly
+
+# table
+lightgbm
+pytorch-tabnet
+
+# image
+opencv-python
+timm
+torchvision
+
+# audio
+librosa
+torchaudio

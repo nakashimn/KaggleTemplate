@@ -3,14 +3,17 @@
 	"dockerComposeFile": "../docker-compose.yml",
 	"service": "kaggle-template",
 	"workspaceFolder": "/workspace",
-	"settings": {},
-	"extensions": [
-		"ms-python.python",
-		"ms-python.vscode-pylance",
-		"donjayamanne.githistory",
-		"eamodio.gitlens",
-		"ryuta46.multi-command",
-		"yzhang.markdown-all-in-one",
-		"shd101wyy.markdown-preview-enhanced"
-	]
+	"customizations": {
+		"codespaces": {
+			"settings": {},
+			"extensions": [
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-toolsai.jupyter",
+				"donjayamanne.githistory",
+				"eamodio.gitlens",
+				"ryuta46.multi-command"
+			]
+		}
+	}
 }
