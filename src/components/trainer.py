@@ -13,6 +13,7 @@ import sklearn.model_selection
 import traceback
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[0]))
+from utility import print_info
 from pl_callbacks import ModelUploader
 from validations import MinLoss, ValidResult
 
@@ -100,12 +101,15 @@ class Trainer:
         # save hyper_params
         mlflow_logger.log_hyperparams(self.config)
         # debug message
-        print("================================================")
-        print("MLflow:")
-        print(f"  experiment_name : {experiment_name}")
-        print(f"  run_name        : {run_name}")
-        print(f"  run_id          : {mlflow_logger.run_id}")
-        print("================================================")
+        print_info(
+            {
+                "MLflow": {
+                    "experiment_name": experiment_name,
+                    "run_name": run_name,
+                    "run_id": mlflow_logger.run_id
+                }
+            }
+        )
         return mlflow_logger
 
     def _create_transforms(self):

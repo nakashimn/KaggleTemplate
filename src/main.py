@@ -9,6 +9,7 @@ import numpy as np
 import torch
 import traceback
 
+from components.utility import print_info
 from components.preprocessor import DataPreprocessor
 from components.trainer import Trainer
 
@@ -51,13 +52,16 @@ def import_classes(config):
         config["augmentation"]["ClassName"]
     )
     # debug message
-    print("================================================")
-    print(f"Components:")
-    print(f"  Model        : {Model.__name__}")
-    print(f"  Dataset      : {Dataset.__name__}")
-    print(f"  DataModule   : {DataModule.__name__}")
-    print(f"  Augmentation : {Augmentation.__name__}")
-    print("================================================")
+    print_info(
+        {
+            "Components": {
+                "Model": Model.__name__,
+                "Dataset": Dataset.__name__,
+                "DataModule": DataModule.__name__,
+                "Augmentation": Augmentation.__name__
+            }
+        }
+    )
     return Model, Dataset, DataModule, Augmentation
 
 def get_args():
