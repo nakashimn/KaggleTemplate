@@ -1,13 +1,14 @@
 # debug
 ipykernel
 ipywidgets
-protobuf<4.21.0
-pyyaml<6.0
+protobuf
+pyyaml
 
 # utility
 tqdm
 kaggle
 black
+urllib3==1.26.16
 
 # data analysis
 numpy
