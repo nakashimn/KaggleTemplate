@@ -6,10 +6,10 @@ import torch
 def format_dict(
         info: dict,
         *,
-        prefix: str="",
-        indent: str="  ",
-        end: str="\n"
-    ):
+        prefix: str = "",
+        indent: str = "  ",
+        end: str = "\n"
+    ) -> str:
     n_key_char = max([len(s) for s in info.keys()])
     strings = ""
     for key, val in info.items():
@@ -25,15 +25,15 @@ def format_dict(
 def print_info(
         info: dict,
         *,
-        linewidth: int=60
-    ):
+        linewidth: int = 60
+    ) -> None:
     print("=" * linewidth)
     print(format_dict(info), end="")
     print("=" * linewidth)
 
 def fix_seed(
         seed: int
-    ):
+    ) -> None:
     os.environ["PYTHONHASHSEED"] = str(seed)
     random.seed(seed)
     np.random.seed(seed)
