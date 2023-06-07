@@ -1,18 +1,43 @@
-from typing import *
+import os
+import random
+import numpy as np
+import torch
 
-def format_dict(info: dict, *, prefix: str="", end: str="\n"):
+def format_dict(
+        info: dict,
+        *,
+        prefix: str="",
+        indent: str="  ",
+        end: str="\n"
+    ):
     n_key_char = max([len(s) for s in info.keys()])
     strings = ""
     for key, val in info.items():
         strings += f"{prefix}{key:<{n_key_char}} : "
         if isinstance(val, dict):
-            strings += f"{end}" + format_dict(val, prefix=prefix+"  ")
+            strings += end
+            strings += format_dict(val, prefix=indent+prefix, indent=indent)
         else:
             strings += f"{val}"
-            strings += f"{end}"
+            strings += end
     return strings
 
-def print_info(info: dict, *, linewidth: int=60):
+def print_info(
+        info: dict,
+        *,
+        linewidth: int=60
+    ):
     print("=" * linewidth)
     print(format_dict(info), end="")
     print("=" * linewidth)
+
+def fix_seed(
+        seed: int
+    ):
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
