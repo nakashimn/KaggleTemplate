@@ -4,7 +4,7 @@ import numpy as np
 import torch
 
 def format_dict(
-        info: dict,
+        info: dict[str, str | int | float],
         *,
         prefix: str = "",
         indent: str = "  ",
@@ -23,7 +23,7 @@ def format_dict(
     return strings
 
 def print_info(
-        info: dict,
+        info: dict[str, str | int | float],
         *,
         linewidth: int = 60
     ) -> None:
