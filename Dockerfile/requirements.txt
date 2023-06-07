@@ -27,7 +27,6 @@ lightly
 
 # table
 lightgbm
-pytorch-tabnet
 
 # image
 opencv-python
