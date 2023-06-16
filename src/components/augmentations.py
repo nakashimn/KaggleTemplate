@@ -3,6 +3,7 @@ import librosa
 import torch
 from torchvision import transforms as Tv
 from torchaudio import transforms as Ta
+from typing import Any
 import traceback
 
 ################################################################################
@@ -192,7 +193,7 @@ class LabelSmoothing:
 class SpecAugmentation:
     def __init__(
             self,
-            config: dict
+            config: dict[str, Any]
         ) -> None:
         self.config = config
         self.spec_transform = self.create_spec_transform()

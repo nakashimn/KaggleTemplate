@@ -8,6 +8,7 @@ from torch.nn import functional as F
 from torch.utils.checkpoint import checkpoint
 from pytorch_lightning import LightningModule
 import timm
+from typing import Any
 import traceback
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[0]))
@@ -17,7 +18,7 @@ from augmentations import Mixup, LabelSmoothing
 # EfficientNet
 ################################################################################
 class EfficientNetModel(LightningModule):
-    def __init__(self, config):
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__()
 
         # const
@@ -38,7 +39,7 @@ class EfficientNetModel(LightningModule):
         self.val_labels = np.nan
         self.min_loss = np.nan
 
-    def _create_model(self):
+    def _create_model(self) -> tuple[nn.Sequential]:
         # basemodel
         base_model = timm.create_model(
             self.config["base_model_name"],
@@ -65,7 +66,7 @@ class EfficientNetModel(LightningModule):
         )
         return encoder, fc
 
-    def forward(self, input_data):
+    def forward(self, input_data: torch.Tensor) -> torch.Tensor:
         x = input_data
         x = self.encoder(x)
         x = x.mean(dim=2)
@@ -73,7 +74,11 @@ class EfficientNetModel(LightningModule):
         out = self.fc(x)
         return out
 
-    def training_step(self, batch, batch_idx):
+    def training_step(
+            self,
+            batch: torch.Tensor,
+            batch_idx: int
+        ) -> dict[str, torch.Tensor]:
         img, labels = batch
         img, labels = self.mixup(img, labels)
         labels = self.label_smoothing(labels)
@@ -85,7 +90,11 @@ class EfficientNetModel(LightningModule):
         self.training_step_outputs.append(outputs)
         return outputs
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(
+            self,
+            batch: torch.Tensor,
+            batch_idx: int
+        ) -> dict[str, torch.Tensor]:
         img, labels = batch
         logits = self.forward(img)
         loss = self.criterion(logits, labels)
@@ -96,13 +105,17 @@ class EfficientNetModel(LightningModule):
         self.validation_step_outputs.append(outputs)
         return outputs
 
-    def predict_step(self, batch, batch_idx):
+    def predict_step(
+            self,
+            batch: torch.Tensor,
+            batch_idx:int
+        ) -> dict[str, torch.Tensor]:
         img = batch
         logits = self.forward(img)
         prob = logits.softmax(axis=1).detach()
         return {"prob": prob}
 
-    def on_train_epoch_end(self):
+    def on_train_epoch_end(self) -> None:
         logits = torch.cat([out["logit"] for out in self.training_step_outputs])
         labels = torch.cat([out["label"] for out in self.training_step_outputs])
         metrics = self.criterion(logits, labels)
@@ -111,7 +124,7 @@ class EfficientNetModel(LightningModule):
 
         return super().on_train_epoch_end()
 
-    def on_validation_epoch_end(self):
+    def on_validation_epoch_end(self) -> None:
         logits = torch.cat([out["logit"] for out in self.validation_step_outputs])
         probs = torch.cat([out["prob"] for out in self.validation_step_outputs])
         labels = torch.cat([out["label"] for out in self.validation_step_outputs])
@@ -123,7 +136,7 @@ class EfficientNetModel(LightningModule):
 
         return super().on_validation_epoch_end()
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> tuple[list]:
         optimizer = eval(self.config["optimizer"]["name"])(
             self.parameters(), **self.config["optimizer"]["params"]
         )

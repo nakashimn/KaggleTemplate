@@ -1,17 +1,28 @@
 import os
 import subprocess
-from pytorch_lightning import callbacks
+from pytorch_lightning import callbacks, Trainer, LightningModule
+from typing import Any
 import traceback
 
 class ModelUploader(callbacks.Callback):
-    def __init__(self, model_dir, every_n_epochs=5, message=""):
+    def __init__(
+            self,
+            model_dir: str,
+            every_n_epochs: int = 5,
+            message: str = ""
+        ) -> None:
         self.model_dir = model_dir
         self.every_n_epochs = every_n_epochs
         self.message = message
         self.should_upload = False
         super().__init__()
 
-    def on_save_checkpoint(self, trainer, pl_module, checkpoint) -> None:
+    def on_save_checkpoint(
+            self,
+            trainer: Trainer,
+            pl_module: LightningModule,
+            checkpoint: dict[str | Any]
+        ) -> None:
         if self.should_upload:
             self._upload_model(
                 f"{self.message}[epoch:{trainer.current_epoch}]"
@@ -19,7 +30,11 @@ class ModelUploader(callbacks.Callback):
             self.should_upload = False
         return super().on_save_checkpoint(trainer, pl_module, checkpoint)
 
-    def on_train_epoch_start(self, trainer, pl_module) -> None:
+    def on_train_epoch_start(
+            self,
+            trainer: Trainer,
+            pl_module: LightningModule
+        ) -> None:
         if self.every_n_epochs is None:
             return super().on_train_epoch_end(trainer, pl_module)
         if (self.every_n_epochs <= 0):
@@ -30,14 +45,21 @@ class ModelUploader(callbacks.Callback):
             self.should_upload = True
         return super().on_train_epoch_end(trainer, pl_module)
 
-    def on_train_end(self, trainer, pl_module) -> None:
+    def on_train_end(
+            self,
+            trainer: Trainer,
+            pl_module: LightningModule
+        ) -> None:
         if self.every_n_epochs is not None:
             self._upload_model(
                 f"{self.message}[epoch:{trainer.current_epoch}]"
             )
         return super().on_train_end(trainer, pl_module)
 
-    def _upload_model(self, message):
+    def _upload_model(
+            self,
+            message: str
+        ) -> None:
         try:
             subprocess.run(
                 ["kaggle", "datasets", "version", "-m", message],

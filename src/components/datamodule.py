@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms as Tv
 import albumentations as A
 from pytorch_lightning import LightningDataModule
-from typing import TypeAlias
+from typing import TypeAlias, Any
 import traceback
 
 Transforms: TypeAlias = Tv.Compose | torch.nn.Sequential
@@ -21,7 +21,7 @@ class ImgDataset(Dataset):
     def __init__(
             self,
             df: pd.DataFrame,
-            config: dict,
+            config: dict[str, Any],
             transform: Transforms | None = None
         ) -> None:
         self.config = config
@@ -75,7 +75,7 @@ class AudioDataset(Dataset):
     def __init__(
             self,
             df: pd.DataFrame,
-            config: dict,
+            config: dict[str, Any],
             transform: Transforms | None = None
         ) -> None:
         self.config = config
@@ -139,7 +139,7 @@ class DataModule(LightningDataModule):
             df_val: pd.DataFrame | None,
             df_pred: pd.DataFrame | None,
             Dataset: Dataset,
-            config: dict,
+            config: dict[str, Any],
             transforms: Transforms | None
         ) -> None:
         super().__init__()
@@ -157,7 +157,7 @@ class DataModule(LightningDataModule):
     def _read_transforms(
             self,
             transforms: Transforms | None
-        ) -> dict[Transforms | None]:
+        ) -> dict[str, Transforms | None]:
         if transforms is not None:
             return transforms
         return {"train": None, "valid": None, "pred": None}
