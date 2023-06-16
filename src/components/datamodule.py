@@ -21,7 +21,7 @@ class ImgDataset(Dataset):
             df: pd.DataFrame,
             config: dict,
             transform: Tv.Compose | Sequential | None = None
-        ):
+        ) -> None:
         self.config = config
         self.filepaths = self._read_filepaths(df)
         self.labels = None
@@ -33,10 +33,13 @@ class ImgDataset(Dataset):
         self.to_tensor = Tv.ToTensor()
         self.transform = transform
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.filepaths)
 
-    def __getitem__(self, idx: int):
+    def __getitem__(
+            self,
+            idx: int
+        ) -> torch.Tensor | tuple[torch.Tensor]:
         img = self._read_img(self.filepaths[idx])
         img = self.pre_transform(image=img)["image"]
         img = self.to_tensor(img)
@@ -47,19 +50,19 @@ class ImgDataset(Dataset):
             return img, labels
         return img
 
-    def _read_filepaths(self, df: pd.DataFrame):
+    def _read_filepaths(self, df: pd.DataFrame) -> NDArray:
         values = df["filepath"].values
         return values
 
-    def _read_img(self, filepath: str):
+    def _read_img(self, filepath: str) -> NDArray:
         img = cv2.imread(filepath)
         return img
 
-    def _read_labels(self, df: pd.DataFrame):
+    def _read_labels(self, df: pd.DataFrame) -> torch.Tensor:
         labels = torch.tensor(df.apply(self._to_onehot), dtype=torch.float32)
         return labels
 
-    def _to_onehot(self, series: pd.Series):
+    def _to_onehot(self, series: pd.Series) -> list[int]:
         return [1 if l in series else 0 for l in self.config["labels"]]
 
 
@@ -72,7 +75,7 @@ class AudioDataset(Dataset):
             df: pd.DataFrame,
             config: dict,
             transform: Tv.Compose | Sequential | None = None
-        ):
+        ) -> None:
         self.config = config
         self.filepaths = self._read_filepaths(df)
         self.labels = None
@@ -84,10 +87,10 @@ class AudioDataset(Dataset):
         self.to_tensor = Tv.ToTensor()
         self.transform = transform
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.filepaths)
 
-    def __getitem__(self, idx: int):
+    def __getitem__(self, idx: int) -> torch.Tensor | tuple[torch.Tensor]:
         melspec = self._read_melspec(self.filepaths[idx])
         melspec = self._normalize(melspec)
         melspec = self.pre_transform(image=melspec)["image"]
@@ -99,16 +102,16 @@ class AudioDataset(Dataset):
             return melspec, labels
         return melspec
 
-    def _read_filepaths(self, df: pd.DataFrame):
+    def _read_filepaths(self, df: pd.DataFrame) -> NDArray:
         values = df["filepath"].values
         return values
 
-    def _read_melspec(self, filepath: str):
+    def _read_melspec(self, filepath: str) -> torch.Tensor:
         melspec = np.load(filepath)["arr_0"]
         melspec = np.expand_dims(melspec, axis=-1)
         return melspec
 
-    def _normalize(self, melspec: NDArray, eps: float = 1e-6):
+    def _normalize(self, melspec: NDArray, eps: float = 1e-6) -> NDArray:
         melspec = (melspec - melspec.mean()) / (melspec.std() + eps)
         if (melspec.max() - melspec.min()) < eps:
             return np.zeros_like(melspec, dtype=np.uint8)
@@ -117,11 +120,11 @@ class AudioDataset(Dataset):
         ).astype(np.uint8)
         return melspec
 
-    def _read_labels(self, df: pd.DataFrame):
+    def _read_labels(self, df: pd.DataFrame) -> torch.Tensor:
         labels = torch.tensor(df.apply(self._to_onehot), dtype=torch.float32)
         return labels
 
-    def _to_onehot(self, series: pd.Series):
+    def _to_onehot(self, series: pd.Series) -> list[int]:
         return [1 if l in series else 0 for l in self.config["labels"]]
 
 ################################################################################
@@ -136,7 +139,7 @@ class DataModule(LightningDataModule):
             Dataset: Dataset,
             config: dict,
             transforms: Tv.Compose | Sequential | None
-        ):
+        ) -> None:
         super().__init__()
 
         # const
@@ -149,12 +152,15 @@ class DataModule(LightningDataModule):
         # class
         self.Dataset = Dataset
 
-    def _read_transforms(self, transforms: Tv.Compose | Sequential | None):
+    def _read_transforms(
+            self,
+            transforms: Tv.Compose | Sequential | None
+        ) -> dict[Tv.Compose | Sequential | None]:
         if transforms is not None:
             return transforms
         return {"train": None, "valid": None, "pred": None}
 
-    def train_dataloader(self):
+    def train_dataloader(self) -> DataLoader | None:
         if (self.df_train is None) or (len(self.df_train) == 0):
             return None
         dataset = self.Dataset(
@@ -169,7 +175,7 @@ class DataModule(LightningDataModule):
         )
         return dataloader
 
-    def val_dataloader(self):
+    def val_dataloader(self) -> DataLoader | None:
         if (self.df_val is None) or (len(self.df_val) == 0):
             return None
         dataset = self.Dataset(
@@ -184,7 +190,7 @@ class DataModule(LightningDataModule):
         )
         return dataloader
 
-    def predict_dataloader(self):
+    def predict_dataloader(self) -> DataLoader | None:
         if (self.df_pred is None) or (len(self.df_pred) == 0):
             return None
         dataset = self.Dataset(
