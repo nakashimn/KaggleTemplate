@@ -5,12 +5,14 @@ import cv2
 import librosa
 import torch
 from torch.nn import functional as F
-from torch.nn import Sequential
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms as Tv
 import albumentations as A
 from pytorch_lightning import LightningDataModule
+from typing import TypeAlias
 import traceback
+
+Transforms: TypeAlias = Tv.Compose | torch.nn.Sequential
 
 ################################################################################
 # For EfficientNetBaseModel(Image)
@@ -20,7 +22,7 @@ class ImgDataset(Dataset):
             self,
             df: pd.DataFrame,
             config: dict,
-            transform: Tv.Compose | Sequential | None = None
+            transform: Transforms | None = None
         ) -> None:
         self.config = config
         self.filepaths = self._read_filepaths(df)
@@ -74,7 +76,7 @@ class AudioDataset(Dataset):
             self,
             df: pd.DataFrame,
             config: dict,
-            transform: Tv.Compose | Sequential | None = None
+            transform: Transforms | None = None
         ) -> None:
         self.config = config
         self.filepaths = self._read_filepaths(df)
@@ -138,7 +140,7 @@ class DataModule(LightningDataModule):
             df_pred: pd.DataFrame | None,
             Dataset: Dataset,
             config: dict,
-            transforms: Tv.Compose | Sequential | None
+            transforms: Transforms | None
         ) -> None:
         super().__init__()
 
@@ -154,8 +156,8 @@ class DataModule(LightningDataModule):
 
     def _read_transforms(
             self,
-            transforms: Tv.Compose | Sequential | None
-        ) -> dict[Tv.Compose | Sequential | None]:
+            transforms: Transforms | None
+        ) -> dict[Transforms | None]:
         if transforms is not None:
             return transforms
         return {"train": None, "valid": None, "pred": None}
