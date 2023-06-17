@@ -9,6 +9,7 @@ import seaborn as sns
 from typing import Any
 import traceback
 
+
 class MinLoss:
     def __init__(self) -> None:
         self.value: float = np.nan
@@ -16,27 +17,21 @@ class MinLoss:
     def update(self, min_loss: int | float) -> None:
         self.value = np.nanmin([self.value, min_loss])
 
+
 class ValidResult:
     def __init__(self) -> None:
         self.values: NDArray | int | float | None = None
 
-    def append(
-            self,
-            values: NDArray | int | float
-        ) -> NDArray | int | float | None:
+    def append(self, values: NDArray | int | float) -> NDArray | int | float | None:
         if self.values is None:
             self.values = values
             return self.values
         self.values = np.concatenate([self.values, values])
         return self.values
 
+
 class ConfusionMatrix:
-    def __init__(
-            self,
-            probs: NDArray,
-            labels: NDArray,
-            config: dict[str, Any]
-        ) -> None:
+    def __init__(self, probs: NDArray, labels: NDArray, config: dict[str, Any]) -> None:
         # const
         self.config: dict[str, Any] = config
         self.probs: NDArray = probs
@@ -52,7 +47,7 @@ class ConfusionMatrix:
         df_confmat: pd.DataFrame = pd.DataFrame(
             confusion_matrix(idx_probs, idx_labels),
             index=self.config["label"],
-            columns=self.config["label"]
+            columns=self.config["label"],
         )
         axis: Axes = self.fig.add_subplot(1, 1, 1)
         sns.heatmap(df_confmat, ax=axis, cmap="bwr", square=True, annot=True)
@@ -60,40 +55,29 @@ class ConfusionMatrix:
         axis.set_ylabel("pred")
         return self.fig
 
+
 class F1Score:
-    def __init__(
-            self,
-            probs: NDArray,
-            labels: NDArray,
-            config: dict[str, Any]
-        ) -> None:
+    def __init__(self, probs: NDArray, labels: NDArray, config: dict[str, Any]) -> None:
         # const
         self.config: dict[str, Any] = config
         self.probs: NDArray = probs
         self.labels: NDArray = labels
 
         # variables
-        self.f1_scores: dict[str, float | None] = {
-            "macro": None,
-            "micro": None
-        }
+        self.f1_scores: dict[str, float | None] = {"macro": None, "micro": None}
 
     def calc(self) -> dict[str, float | NDArray]:
         idx_probs: int = np.argmax(self.probs, axis=1)
         idx_labels: int = np.argmax(self.labels, axis=1)
         self.f1_scores = {
             "macro": f1_score(idx_probs, idx_labels, average="macro"),
-            "micro": f1_score(idx_probs, idx_labels, average="micro")
+            "micro": f1_score(idx_probs, idx_labels, average="micro"),
         }
         return self.f1_scores
 
+
 class LogLoss:
-    def __init__(
-            self,
-            probs: NDArray,
-            labels: NDArray,
-            config: dict[str, Any]
-        ) -> None:
+    def __init__(self, probs: NDArray, labels: NDArray, config: dict[str, Any]) -> None:
         # const
         self.probs: NDArray = probs
         self.labels: NDArray = labels
@@ -110,13 +94,9 @@ class LogLoss:
         self.logloss = -np.mean(np.sum(self.labels * log_probs, axis=1))
         return self.logloss
 
+
 class CMeanAveragePrecision:
-    def __init__(
-            self,
-            probs: NDArray,
-            labels: NDArray,
-            config: dict[str, Any]
-        ) -> None:
+    def __init__(self, probs: NDArray, labels: NDArray, config: dict[str, Any]) -> None:
         # const
         self.config: dict[str, Any] = config
         self.probs: NDArray = probs
@@ -126,19 +106,13 @@ class CMeanAveragePrecision:
         self.padded_labels: NDArray = self._padding(self.labels, config["padding_num"])
 
     def _padding(self, values: NDArray, padding_num: int | float) -> NDArray:
-        padded_values: NDArray = np.concatenate([
-            values,
-            np.ones(
-                [padding_num, values.shape[1]],
-                dtype=values.dtype
-            )
-        ])
+        padded_values: NDArray = np.concatenate(
+            [values, np.ones([padding_num, values.shape[1]], dtype=values.dtype)]
+        )
         return padded_values
 
     def calc(self) -> float:
         cmap: float = average_precision_score(
-            self.padded_labels,
-            self.padded_probs,
-            average="macro"
+            self.padded_labels, self.padded_probs, average="macro"
         )
         return cmap

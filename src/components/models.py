@@ -15,6 +15,7 @@ import traceback
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[0]))
 from augmentations import Augmentation, Mixup, LabelSmoothing
 
+
 ################################################################################
 # EfficientNet
 ################################################################################
@@ -25,7 +26,9 @@ class EfficientNetModel(LightningModule):
         # const
         self.config: dict[str, Any] = config
         self.encoder, self.fc = self._create_model()
-        self.criterion: nn.Module = eval(config["loss"]["name"])(**self.config["loss"]["params"])
+        self.criterion: nn.Module = eval(config["loss"]["name"])(
+            **self.config["loss"]["params"]
+        )
 
         # augmentation
         self.mixup: Augmentation = Mixup(config["mixup"]["alpha"])
@@ -38,7 +41,7 @@ class EfficientNetModel(LightningModule):
         self.validation_step_outputs: list[dict[str, Any]] = []
         self.val_probs: NDArray | float = np.nan
         self.val_labels: NDArray | float = np.nan
-        self.min_loss:NDArray | float = np.nan
+        self.min_loss: NDArray | float = np.nan
 
     def _create_model(self) -> tuple[nn.Sequential]:
         # basemodel
@@ -47,23 +50,17 @@ class EfficientNetModel(LightningModule):
             pretrained=True,
             num_classes=0,
             global_pool="",
-            in_chans=3
+            in_chans=3,
         )
         layers: list = list(base_model.children())[:-2]
         encoder: nn.Sequential = nn.Sequential(*layers)
         # linear
         fc: nn.Sequential = nn.Sequential(
             nn.Linear(
-                encoder[-1].num_features * 7,
-                self.config["fc_mid_dim"],
-                bias=True
+                encoder[-1].num_features * 7, self.config["fc_mid_dim"], bias=True
             ),
             nn.ReLU(),
-            nn.Linear(
-                self.config["fc_mid_dim"],
-                self.config["num_class"],
-                bias=True
-            )
+            nn.Linear(self.config["fc_mid_dim"], self.config["num_class"], bias=True),
         )
         return encoder, fc
 
@@ -76,10 +73,8 @@ class EfficientNetModel(LightningModule):
         return out
 
     def training_step(
-            self,
-            batch: torch.Tensor | tuple[torch.Tensor],
-            batch_idx: int
-        ) -> dict[str, torch.Tensor]:
+        self, batch: torch.Tensor | tuple[torch.Tensor], batch_idx: int
+    ) -> dict[str, torch.Tensor]:
         img, labels = batch
         img, labels = self.mixup(img, labels)
         labels = self.label_smoothing(labels)
@@ -87,48 +82,65 @@ class EfficientNetModel(LightningModule):
         loss: torch.Tensor = self.criterion(logits, labels)
         logit: torch.Tensor = logits.detach()
         label: torch.Tensor = labels.detach()
-        outputs: dict[str, torch.Tensor] = {"loss": loss, "logit": logit, "label": label}
+        outputs: dict[str, torch.Tensor] = {
+            "loss": loss,
+            "logit": logit,
+            "label": label,
+        }
         self.training_step_outputs.append(outputs)
         return outputs
 
     def validation_step(
-            self,
-            batch: torch.Tensor,
-            batch_idx: int
-        ) -> dict[str, torch.Tensor]:
+        self, batch: torch.Tensor, batch_idx: int
+    ) -> dict[str, torch.Tensor]:
         img, labels = batch
         logits: torch.Tensor = self.forward(img)
         loss: torch.Tensor = self.criterion(logits, labels)
         logit: torch.Tensor = logits.detach()
         prob: torch.Tensor = logits.softmax(axis=1).detach()
         label: torch.Tensor = labels.detach()
-        outputs: dict[str, torch.Tensor] = {"loss": loss, "logit": logit, "prob": prob, "label": label}
+        outputs: dict[str, torch.Tensor] = {
+            "loss": loss,
+            "logit": logit,
+            "prob": prob,
+            "label": label,
+        }
         self.validation_step_outputs.append(outputs)
         return outputs
 
     def predict_step(
-            self,
-            batch: torch.Tensor,
-            batch_idx:int
-        ) -> dict[str, torch.Tensor]:
+        self, batch: torch.Tensor, batch_idx: int
+    ) -> dict[str, torch.Tensor]:
         img: torch.Tensor = batch
         logits: torch.Tensor = self.forward(img)
         prob: torch.Tensor = logits.softmax(axis=1).detach()
         return {"prob": prob}
 
     def on_train_epoch_end(self) -> None:
-        logits: torch.Tensor = torch.cat([out["logit"] for out in self.training_step_outputs])
-        labels: torch.Tensor = torch.cat([out["label"] for out in self.training_step_outputs])
+        logits: torch.Tensor = torch.cat(
+            [out["logit"] for out in self.training_step_outputs]
+        )
+        labels: torch.Tensor = torch.cat(
+            [out["label"] for out in self.training_step_outputs]
+        )
         metrics: torch.Tensor = self.criterion(logits, labels)
-        self.min_loss: float = np.nanmin([self.min_loss, metrics.detach().cpu().numpy()])
+        self.min_loss: float = np.nanmin(
+            [self.min_loss, metrics.detach().cpu().numpy()]
+        )
         self.log(f"train_loss", metrics)
 
         return super().on_train_epoch_end()
 
     def on_validation_epoch_end(self) -> None:
-        logits: torch.Tensor = torch.cat([out["logit"] for out in self.validation_step_outputs])
-        probs: torch.Tensor = torch.cat([out["prob"] for out in self.validation_step_outputs])
-        labels: torch.Tensor = torch.cat([out["label"] for out in self.validation_step_outputs])
+        logits: torch.Tensor = torch.cat(
+            [out["logit"] for out in self.validation_step_outputs]
+        )
+        probs: torch.Tensor = torch.cat(
+            [out["prob"] for out in self.validation_step_outputs]
+        )
+        labels: torch.Tensor = torch.cat(
+            [out["label"] for out in self.validation_step_outputs]
+        )
         metrics: torch.Tensor = self.criterion(logits, labels)
         self.log(f"val_loss", metrics)
 

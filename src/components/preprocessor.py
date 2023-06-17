@@ -20,11 +20,12 @@ class Preprocessor(ABC):
     def pred_dataset(self, *args: Any) -> pd.DataFrame:
         raise NotImplementedError()
 
+
 ################################################################################
 # Data Preprocessor
 ################################################################################
 class DataPreprocessor:
-    def __init__(self, config: dict[str: Any]) -> None:
+    def __init__(self, config: dict[str:Any]) -> None:
         self.config: dict[str, Any] = config
 
     def train_dataset(self) -> pd.DataFrame:

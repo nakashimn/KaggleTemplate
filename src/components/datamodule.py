@@ -17,16 +17,17 @@ import traceback
 ################################################################################
 Transforms: TypeAlias = Tv.Compose | torch.nn.Sequential | torch.nn.Module
 
+
 ################################################################################
 # For EfficientNetBaseModel(Image)
 ################################################################################
 class ImgDataset(Dataset):
     def __init__(
-            self,
-            df: pd.DataFrame,
-            config: dict[str, Any],
-            transform: Transforms | None = None
-        ) -> None:
+        self,
+        df: pd.DataFrame,
+        config: dict[str, Any],
+        transform: Transforms | None = None,
+    ) -> None:
         self.config: dict[str, Any] = config
         self.filepaths: NDArray = self._read_filepaths(df)
         self.labels: torch.Tensor | None = None
@@ -41,10 +42,7 @@ class ImgDataset(Dataset):
     def __len__(self) -> int:
         return len(self.filepaths)
 
-    def __getitem__(
-            self,
-            idx: int
-        ) -> torch.Tensor | tuple[torch.Tensor]:
+    def __getitem__(self, idx: int) -> torch.Tensor | tuple[torch.Tensor]:
         img: NDArray = self._read_img(self.filepaths[idx])
         img = self.pre_transform(image=img)["image"]
         img = self.to_tensor(img)
@@ -64,7 +62,9 @@ class ImgDataset(Dataset):
         return img
 
     def _read_labels(self, df: pd.DataFrame) -> torch.Tensor:
-        labels: torch.Tensor = torch.tensor(df.apply(self._to_onehot), dtype=torch.float32)
+        labels: torch.Tensor = torch.tensor(
+            df.apply(self._to_onehot), dtype=torch.float32
+        )
         return labels
 
     def _to_onehot(self, series: pd.Series) -> list[int]:
@@ -76,11 +76,11 @@ class ImgDataset(Dataset):
 ################################################################################
 class AudioDataset(Dataset):
     def __init__(
-            self,
-            df: pd.DataFrame,
-            config: dict[str, Any],
-            transform: Transforms | None = None
-        ) -> None:
+        self,
+        df: pd.DataFrame,
+        config: dict[str, Any],
+        transform: Transforms | None = None,
+    ) -> None:
         self.config: dict[str, Any] = config
         self.filepaths: NDArray = self._read_filepaths(df)
         self.labels: torch.Tensor | None = None
@@ -126,25 +126,28 @@ class AudioDataset(Dataset):
         return melspec
 
     def _read_labels(self, df: pd.DataFrame) -> torch.Tensor:
-        labels: torch.Tensor = torch.tensor(df.apply(self._to_onehot), dtype=torch.float32)
+        labels: torch.Tensor = torch.tensor(
+            df.apply(self._to_onehot), dtype=torch.float32
+        )
         return labels
 
     def _to_onehot(self, series: pd.Series) -> list[int]:
         return [1 if l in series else 0 for l in self.config["labels"]]
+
 
 ################################################################################
 # DataModule
 ################################################################################
 class DataModule(LightningDataModule):
     def __init__(
-            self,
-            df_train: pd.DataFrame | None,
-            df_val: pd.DataFrame | None,
-            df_pred: pd.DataFrame | None,
-            Dataset: Dataset,
-            config: dict[str, Any],
-            transforms: Transforms | None
-        ) -> None:
+        self,
+        df_train: pd.DataFrame | None,
+        df_val: pd.DataFrame | None,
+        df_pred: pd.DataFrame | None,
+        Dataset: Dataset,
+        config: dict[str, Any],
+        transforms: Transforms | None,
+    ) -> None:
         super().__init__()
 
         # const
@@ -158,9 +161,8 @@ class DataModule(LightningDataModule):
         self.Dataset = Dataset
 
     def _read_transforms(
-            self,
-            transforms: Transforms | None
-        ) -> dict[str, Transforms | None]:
+        self, transforms: Transforms | None
+    ) -> dict[str, Transforms | None]:
         if transforms is not None:
             return transforms
         return {"train": None, "valid": None, "pred": None}
