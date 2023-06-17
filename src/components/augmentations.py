@@ -37,10 +37,10 @@ class SoundAugmentation(Augmentation):
             ratio_pitch_shift: float = 0.0,
             ratio_percussive: float = 0.0,
             ratio_time_stretch: float = 0.0,
-            range_harmonic_margin: list[int, int] = [1, 3],
-            range_n_step_pitch_shift: list[float, float] = [-0.5, 0.5],
-            range_percussive_margin: list[int, int] = [1, 3],
-            range_rate_time_stretch: list[float, float] = [0.9, 1.1]
+            range_harmonic_margin: list[int] = [1, 3],
+            range_n_step_pitch_shift: list[float] = [-0.5, 0.5],
+            range_percussive_margin: list[int] = [1, 3],
+            range_rate_time_stretch: list[float] = [0.9, 1.1]
         ) -> None:
         # const
         self.sampling_rate: int = sampling_rate
@@ -80,13 +80,13 @@ class SoundAugmentation(Augmentation):
             harmonic_margin: float = np.random.uniform(
                 *self.config["harmonic"]["range_margin"]
             )
-            snd: NDArray = librosa.effects.harmonic(snd, margin=harmonic_margin)
+            snd = librosa.effects.harmonic(snd, margin=harmonic_margin)
         # pitch shift
         if self._is_applied(self.config["pitch_shift"]["ratio"]):
             pitch_shift_n_step: float = np.random.uniform(
                 *self.config["pitch_shift"]["range_n_step"]
             )
-            snd: NDArray = librosa.effects.pitch_shift(
+            snd = librosa.effects.pitch_shift(
                 snd, n_steps=pitch_shift_n_step, sr=self.sampling_rate
             )
         # percussive
@@ -94,13 +94,13 @@ class SoundAugmentation(Augmentation):
             percussive_mergin: float = np.random.uniform(
                 *self.config["percussive"]["range_margin"]
             )
-            snd: NDArray = librosa.effects.percussive(snd, margin=percussive_mergin)
+            snd = librosa.effects.percussive(snd, margin=percussive_mergin)
         # time stretch
         if self._is_applied(self.config["time_stretch"]["ratio"]):
             time_stretch_rate: float = np.random.uniform(
                 *self.config["time_stretch"]["range_rate"]
             )
-            snd: NDArray = librosa.effects.time_stretch(snd, rate=time_stretch_rate)
+            snd = librosa.effects.time_stretch(snd, rate=time_stretch_rate)
         return snd
 
     def _is_applied(self, ratio: float) -> bool:
