@@ -10,8 +10,8 @@ def format_dict(
         indent: str = "  ",
         end: str = "\n"
     ) -> str:
-    n_key_char = max([len(s) for s in info.keys()])
-    strings = ""
+    n_key_char: int = max([len(s) for s in info.keys()])
+    strings: str = ""
     for key, val in info.items():
         strings += f"{prefix}{key:<{n_key_char}} : "
         if isinstance(val, dict):

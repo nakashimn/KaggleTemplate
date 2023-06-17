@@ -1,11 +1,18 @@
 import numpy as np
+from numpy.typing import NDArray
 import librosa
 import torch
+from torch.distributions.distribution import Distribution
 from torchvision import transforms as Tv
 from torchaudio import transforms as Ta
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TypeAlias, Any
 import traceback
+
+################################################################################
+# TypeAlias
+################################################################################
+Transforms: TypeAlias = Tv.Compose | torch.nn.Sequential | torch.nn.Module
 
 ################################################################################
 # AbstractClass
@@ -36,15 +43,15 @@ class SoundAugmentation(Augmentation):
             range_rate_time_stretch: list[float, float] = [0.9, 1.1]
         ) -> None:
         # const
-        self.sampling_rate = sampling_rate
-        self.n_fft = n_fft
-        self.enable = {
+        self.sampling_rate: int = sampling_rate
+        self.n_fft: int = n_fft
+        self.enable: dict[str, bool] = {
             "pitch_shift": (ratio_pitch_shift > 0.0),
             "time_stretch": (ratio_time_stretch > 0.0),
             "harmonic": (ratio_harmonic > 0.0),
             "percussive": (ratio_percussive > 0.0)
         }
-        self.config = {
+        self.config: dict[str, dict[str, Any]] = {
             "harmonic": {
                 "ratio": ratio_harmonic,
                 "range_margin": range_harmonic_margin
@@ -65,38 +72,38 @@ class SoundAugmentation(Augmentation):
 
     def run(
             self,
-            snd: np.ndarray
-        ) -> np.ndarray:
+            snd: NDArray
+        ) -> NDArray:
         # check length
         if len(snd) < self.n_fft:
             return snd
 
         # harmonic
         if self._is_applied(self.config["harmonic"]["ratio"]):
-            harmonic_margin = np.random.uniform(
+            harmonic_margin: float = np.random.uniform(
                 *self.config["harmonic"]["range_margin"]
             )
-            snd = librosa.effects.harmonic(snd, margin=harmonic_margin)
+            snd: NDArray = librosa.effects.harmonic(snd, margin=harmonic_margin)
         # pitch shift
         if self._is_applied(self.config["pitch_shift"]["ratio"]):
-            pitch_shift_n_step = np.random.uniform(
+            pitch_shift_n_step: float = np.random.uniform(
                 *self.config["pitch_shift"]["range_n_step"]
             )
-            snd = librosa.effects.pitch_shift(
+            snd: NDArray = librosa.effects.pitch_shift(
                 snd, n_steps=pitch_shift_n_step, sr=self.sampling_rate
             )
         # percussive
         if self._is_applied(self.config["percussive"]["ratio"]):
-            percussive_mergin = np.random.uniform(
+            percussive_mergin: float = np.random.uniform(
                 *self.config["percussive"]["range_margin"]
             )
-            snd = librosa.effects.percussive(snd, margin=percussive_mergin)
+            snd: NDArray = librosa.effects.percussive(snd, margin=percussive_mergin)
         # time stretch
         if self._is_applied(self.config["time_stretch"]["ratio"]):
-            time_stretch_rate = np.random.uniform(
+            time_stretch_rate: float = np.random.uniform(
                 *self.config["time_stretch"]["range_rate"]
             )
-            snd = librosa.effects.time_stretch(snd, rate=time_stretch_rate)
+            snd: NDArray = librosa.effects.time_stretch(snd, rate=time_stretch_rate)
         return snd
 
     def _is_applied(
@@ -110,16 +117,16 @@ class Fadein:
             self,
             ratio: float = 0.5
         ) -> None:
-        self.ratio = ratio
+        self.ratio: float = ratio
 
     def __call__(
             self,
-            x: np.ndarray
-        ) -> np.ndarray:
-        fade_gain = np.random.uniform(
+            x: NDArray
+        ) -> NDArray:
+        fade_gain: float = np.random.uniform(
             1.0 / (x.shape[2] * self.ratio), 1.0
         )
-        weights = torch.clip(
+        weights: torch.Tensor = torch.clip(
             fade_gain * torch.arange(1, x.shape[2] + 1),
             0.0, 1.0
         ).to(torch.float32)
@@ -130,16 +137,16 @@ class Fadeout:
             self,
             ratio: float = 0.5
         ) -> None:
-        self.ratio = ratio
+        self.ratio: float = ratio
 
     def __call__(
             self,
-            x: np.ndarray
+            x: NDArray
         ):
-        fade_gain = np.random.uniform(
+        fade_gain: float = np.random.uniform(
             1.0 / (x.shape[2] * self.ratio), 1.0
         )
-        weights = torch.flip(
+        weights: torch.Tensor = torch.flip(
             torch.clip(
                 fade_gain * torch.arange(1, x.shape[2] + 1),
                 0.0, 1.0
@@ -154,8 +161,8 @@ class Mixup:
             alpha: float = 0.01,
             device: str = "cuda"
         ) -> None:
-        self.alpha = alpha
-        self.rand_generator = torch.distributions.beta.Beta(alpha, alpha)
+        self.alpha: float = alpha
+        self.rand_generator: Distribution = torch.distributions.beta.Beta(alpha, alpha)
 
     def __call__(
             self,
@@ -169,9 +176,9 @@ class Mixup:
             img: torch.Tensor,
             label: torch.Tensor
         ) -> tuple[torch.Tensor, torch.Tensor]:
-        lam = self.rand_generator.sample()
-        img_mixup = lam * img + (1 - lam) * img.roll(shifts=1, dims=0)
-        label_mixup = lam * label + (1 - lam) * label.roll(shifts=1, dims=0)
+        lam: torch.Tensor = self.rand_generator.sample()
+        img_mixup: torch.Tensor = lam * img + (1 - lam) * img.roll(shifts=1, dims=0)
+        label_mixup: torch.Tensor = lam * label + (1 - lam) * label.roll(shifts=1, dims=0)
         return img_mixup, label_mixup
 
 class LabelSmoothing:
@@ -181,35 +188,24 @@ class LabelSmoothing:
             n_class: int = 3,
             device: str = "cuda"
         ) -> None:
-        eyes = torch.eye(n_class)
-        self.softlabels = torch.where(eyes<=0, eps/(n_class-1), 1-eps).to(torch.float32).to(device)
+        eyes: torch.Tensor = torch.eye(n_class)
+        self.softlabels: torch.Tensor = torch.where(eyes<=0, eps/(n_class-1), 1-eps).to(torch.float32).to(device)
 
-    def __call__(
-            self,
-            label: torch.Tensor
-        ) -> torch.Tensor:
+    def __call__(self, label: torch.Tensor) -> torch.Tensor:
         return self.run(label)
 
-    def run(
-            self,
-            label: torch.Tensor
-        ) -> torch.Tensor:
+    def run(self, label: torch.Tensor) -> torch.Tensor:
         return torch.matmul(label.to(torch.float32), self.softlabels)
 
 class SpecAugmentation(Augmentation):
-    def __init__(
-            self,
-            config: dict[str, Any]
-        ) -> None:
-        self.config = config
-        self.spec_transform = self.create_spec_transform()
+    def __init__(self, config: dict[str, Any]) -> None:
+        self.config: dict[str, Any] = config
+        self.spec_transform: Transforms | None = self.create_spec_transform()
 
-    def create_spec_transform(
-            self
-        ):
-        augmentations = []
+    def create_spec_transform(self) -> Transforms | None:
+        augmentations: list[Transforms] = []
         if ("pitch_shift" in self.config.keys()) and (self.config["pitch_shift"] is not None):
-            pitchshift = Tv.RandomApply([
+            pitchshift: Transforms = Tv.RandomApply([
                 Tv.RandomAffine(
                     degrees=0,
                     translate=(0, self.config["pitch_shift"]["max"])
@@ -218,7 +214,7 @@ class SpecAugmentation(Augmentation):
             )
             augmentations.append(pitchshift)
         if ("time_shift" in self.config.keys()) and (self.config["time_shift"] is not None):
-            timeshift = Tv.RandomApply([
+            timeshift: Transforms = Tv.RandomApply([
                 Tv.RandomAffine(
                     degrees=0,
                     translate=(self.config["time_shift"]["max"], 0)
@@ -227,25 +223,25 @@ class SpecAugmentation(Augmentation):
             )
             augmentations.append(timeshift)
         if ("freq_mask" in self.config.keys()) and (self.config["freq_mask"] is not None):
-            freqmask = Tv.RandomApply(
+            freqmask: Transforms = Tv.RandomApply(
                 [Ta.FrequencyMasking(self.config["freq_mask"]["max"])],
                 p=self.config["freq_mask"]["probability"]
             )
             augmentations.append(freqmask)
         if ("time_mask" in self.config.keys()) and (self.config["time_mask"] is not None):
-            timemask = Tv.RandomApply(
+            timemask: Transforms = Tv.RandomApply(
                 [Ta.TimeMasking(self.config["time_mask"]["max"])],
                 p=self.config["time_mask"]["probability"]
             )
             augmentations.append(timemask)
         if ("fadein" in self.config.keys()) and (self.config["fadein"] is not None):
-            fadein = Tv.RandomApply(
+            fadein: Transforms = Tv.RandomApply(
                 [Fadein(self.config["fadein"]["max"])],
                 p=self.config["fadein"]["probability"]
             )
             augmentations.append(fadein)
         if ("fadeout" in self.config.keys()) and (self.config["fadeout"] is not None):
-            fadeout = Tv.RandomApply(
+            fadeout: Transforms = Tv.RandomApply(
                 [Fadeout(self.config["fadeout"]["max"])],
                 p=self.config["fadeout"]["probability"]
             )

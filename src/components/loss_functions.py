@@ -8,9 +8,9 @@ from torch import nn
 class FocalLoss(nn.Module):
     def __init__(self, gamma: float = 2.0) -> None:
         super().__init__()
-        self.gamma = gamma
+        self.gamma: float = gamma
 
     def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-        probas = pred.softmax(dim=1)
-        loss = -(target*((1-probas)**self.gamma)*(probas.log())).mean()
+        probas: torch.Tensor = pred.softmax(dim=1)
+        loss: torch.Tensor = -(target*((1-probas)**self.gamma)*(probas.log())).mean()
         return loss
