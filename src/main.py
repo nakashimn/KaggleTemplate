@@ -2,34 +2,39 @@ import os
 import shutil
 import importlib
 import argparse
+from argparse import Namespace
 import pathlib
 import glob
 import torch
+from torch.utils.data import Dataset
+from pytorch_lightning import LightningModule, LightningDataModule
+from typing import Any
 import traceback
 
 from components.utility import print_info, fix_seed
 from components.preprocessor import DataPreprocessor
+from components.augmentations import Augmentation
 from components.trainer import Trainer
 
 def update_config(
-        config: dict,
+        config: dict[str, Any],
         filepath_config: str
-    ):
+    ) -> None:
     # copy ConfigFile from temporal_dir to model_dir
     dirpath_model = pathlib.Path(config["path"]["model_dir"])
     filename_config = pathlib.Path(filepath_config).name
     shutil.copy2(filepath_config, str(dirpath_model / filename_config))
 
 def remove_exist_models(
-        config: dict
-    ):
+        config: dict[str, Any]
+    ) -> None:
     filepaths_ckpt = glob.glob(f"{config['path']['model_dir']}/*.ckpt")
     for fp in filepaths_ckpt:
         os.remove(fp)
 
 def import_classes(
-        config: dict
-    ):
+        config: dict[str, Any]
+    ) -> tuple[LightningModule, Dataset, LightningDataModule, Augmentation]:
     # import Classes dynamically
     Model = getattr(
         importlib.import_module(f"components.models"),
@@ -60,7 +65,7 @@ def import_classes(
     )
     return Model, Dataset, DataModule, Augmentation
 
-def get_args():
+def get_args() -> Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-c", "--config",
