@@ -21,13 +21,17 @@ import optuna
 import traceback
 
 from components.preprocessor import DataPreprocessor
-from components.validations import MinLoss, ValidResult, ConfusionMatrix, F1Score, LogLoss
+from components.validations import (
+    MinLoss,
+    ValidResult,
+    ConfusionMatrix,
+    F1Score,
+    LogLoss,
+)
+
 
 class Optimizer:
-    def __init__(
-        self, Model, DataModule, Dataset, Augmentation,
-        df_train, config
-    ):
+    def __init__(self, Model, DataModule, Dataset, Augmentation, df_train, config):
         # const
         self.config = config
         self.df_train = df_train
@@ -63,23 +67,21 @@ class Optimizer:
     def _update_config(self, trial):
         self.config["augmentation"]["freq_mask"] = {
             "probability": trial.suggest_float("freq_mask_prob", 0.0, 1.0),
-            "max": trial.suggest_int("freq_mask_max", 0, 200)
+            "max": trial.suggest_int("freq_mask_max", 0, 200),
         }
         self.config["augmentation"]["time_mask"] = {
             "probability": trial.suggest_float("time_mask_prob", 0.0, 1.0),
-            "max": trial.suggest_int("time_mask_max", 0, 300)
+            "max": trial.suggest_int("time_mask_max", 0, 300),
         }
         self.config["augmentation"]["fadein"] = {
             "probability": trial.suggest_float("fadein_prob", 0.0, 1.0),
-            "max": trial.suggest_float("fadein_max", 0, 1.0)
+            "max": trial.suggest_float("fadein_max", 0, 1.0),
         }
         self.config["augmentation"]["fadein"] = {
             "probability": trial.suggest_float("fadeout_prob", 0.0, 1.0),
-            "max": trial.suggest_float("fadeout_max", 0, 1.0)
+            "max": trial.suggest_float("fadeout_max", 0, 1.0),
         }
-        self.config["model"]["out_dim"] = trial.suggest_int(
-            "out_dim", 128, 2048
-        )
+        self.config["model"]["out_dim"] = trial.suggest_int("out_dim", 128, 2048)
         self.config["model"]["projection_hidden_dim"] = trial.suggest_int(
             "projection_hidden_dim", 128, 2048
         )
@@ -88,15 +90,11 @@ class Optimizer:
         # create Logger instance
         experiment_name = f"{self.config['experiment_name']}[{self.timestamp}]"
         run_name = "All" if (fold is None) else fold
-        mlflow_logger = MLFlowLogger(
-            experiment_name=experiment_name,
-            run_name=run_name
-        )
+        mlflow_logger = MLFlowLogger(experiment_name=experiment_name, run_name=run_name)
         # save hyper_params
         mlflow_logger.log_hyperparams(self.config)
         mlflow_logger.experiment.log_artifact(
-            mlflow_logger.run_id,
-            f"./config/{args.config}.py"
+            mlflow_logger.run_id, f"./config/{args.config}.py"
         )
         # debug message
         print("================================================")
@@ -111,17 +109,17 @@ class Optimizer:
         transforms = {
             "train": self.Augmentation(config["augmentation"]),
             "valid": None,
-            "pred": None
+            "pred": None,
         }
         return transforms
 
     def _create_datamodule(self, idx_train=None, idx_val=None, transforms=None):
         # fold dataset
-        if (idx_train is None):
+        if idx_train is None:
             df_train_fold = self.df_train
         else:
             df_train_fold = self.df_train.loc[idx_train].reset_index(drop=True)
-        if (idx_val is None):
+        if idx_val is None:
             df_val_fold = None
         else:
             df_val_fold = self.df_train.loc[idx_val].reset_index(drop=True)
@@ -133,7 +131,7 @@ class Optimizer:
             df_pred=None,
             Dataset=self.Dataset,
             config=self.config["datamodule"],
-            transforms=transforms
+            transforms=transforms,
         )
         return datamodule
 
@@ -145,8 +143,7 @@ class Optimizer:
         if not os.path.exists(filepath_checkpoint):
             return self.Model(self.config["model"])
         model = self.Model.load_from_checkpoint(
-            filepath_checkpoint,
-            config=self.config["model"]
+            filepath_checkpoint, config=self.config["model"]
         )
         return model
 
@@ -162,12 +159,10 @@ class Optimizer:
 
     def _define_checkpoint_path(self, checkpoint_name):
         filepath_ckpt_load = f"{self.config['path']['ckpt_dir']}/{checkpoint_name}.ckpt"
-        filepath_ckpt_save = f"{self.config['path']['model_dir']}/{checkpoint_name}.ckpt"
-        filepath_ckpt = {
-            "init": None,
-            "resume": None,
-            "save": filepath_ckpt_save
-        }
+        filepath_ckpt_save = (
+            f"{self.config['path']['model_dir']}/{checkpoint_name}.ckpt"
+        )
+        filepath_ckpt = {"init": None, "resume": None, "save": filepath_ckpt_save}
         if not os.path.exists(filepath_ckpt_load):
             return filepath_ckpt
         if self.config["resume"]:
@@ -179,26 +174,22 @@ class Optimizer:
     def _define_callbacks(self, callback_config):
         # define earlystopping
         earlystopping = EarlyStopping(
-            **callback_config["earlystopping"],
-            **self.config["earlystopping"]
+            **callback_config["earlystopping"], **self.config["earlystopping"]
         )
         # define learning rate monitor
         lr_monitor = callbacks.LearningRateMonitor()
         # define check point
         loss_checkpoint = callbacks.ModelCheckpoint(
-            **callback_config["checkpoint"],
-            **self.config["checkpoint"]
+            **callback_config["checkpoint"], **self.config["checkpoint"]
         )
         # define model uploader
         model_uploader = ModelUploader(
             model_dir=self.config["path"]["model_dir"],
             every_n_epochs=self.config["upload_every_n_epochs"],
-            message=self.config["experiment_name"]
+            message=self.config["experiment_name"],
         )
 
-        callback_list = [
-            earlystopping, lr_monitor, loss_checkpoint, model_uploader
-        ]
+        callback_list = [earlystopping, lr_monitor, loss_checkpoint, model_uploader]
         return callback_list
 
     def _train(self, datamodule, fold=None, min_delta=0.0, min_loss=None, logger=None):
@@ -216,12 +207,9 @@ class Optimizer:
             "earlystopping": {
                 "monitor": monitor,
                 "min_delta": min_delta,
-                "stopping_threshold": min_loss
+                "stopping_threshold": min_loss,
             },
-            "checkpoint": {
-                "filename": checkpoint_name,
-                "monitor": monitor
-            }
+            "checkpoint": {"filename": checkpoint_name, "monitor": monitor},
         }
         callback_list = self._define_callbacks(callback_config)
 
@@ -234,23 +222,18 @@ class Optimizer:
             callbacks=callback_list,
             fast_dev_run=False,
             num_sanity_val_steps=0,
-            **self.config["trainer"]
+            **self.config["trainer"],
         )
 
         # train
         trainer.fit(
-            model,
-            datamodule=datamodule,
-            ckpt_path=filepath_checkpoint["resume"]
+            model, datamodule=datamodule, ckpt_path=filepath_checkpoint["resume"]
         )
         collapse_level = copy.deepcopy(model.collapse_level)
 
         # logging
         if logger is not None:
-            logger.experiment.log_artifact(
-                logger.run_id,
-                filepath_checkpoint["save"]
-            )
+            logger.experiment.log_artifact(logger.run_id, filepath_checkpoint["save"])
 
         # clean memory
         del model
@@ -264,18 +247,13 @@ class Optimizer:
         model.eval()
 
         # define trainer
-        trainer = pl.Trainer(
-            logger=logger,
-            **self.config["trainer"]
-        )
+        trainer = pl.Trainer(logger=logger, **self.config["trainer"])
 
         # validation
-        filepath_checkpoint = f"{self.config['path']['model_dir']}/{self.config['modelname']}_{fold}.ckpt"
-        trainer.validate(
-            model,
-            datamodule=datamodule,
-            ckpt_path=filepath_checkpoint
+        filepath_checkpoint = (
+            f"{self.config['path']['model_dir']}/{self.config['modelname']}_{fold}.ckpt"
         )
+        trainer.validate(model, datamodule=datamodule, ckpt_path=filepath_checkpoint)
 
         # get result
         val_probs = copy.deepcopy(model.val_probs)
@@ -287,16 +265,19 @@ class Optimizer:
 
         return val_probs, val_labels
 
+
 def update_config(config, filepath_config):
     # copy ConfigFile from temporal_dir to model_dir
     dirpath_model = pathlib.Path(config["path"]["model_dir"])
     filename_config = pathlib.Path(filepath_config).name
     shutil.copy2(filepath_config, str(dirpath_model / filename_config))
 
+
 def remove_exist_models(config):
     filepaths_ckpt = glob.glob(f"{config['path']['model_dir']}/*.ckpt")
     for fp in filepaths_ckpt:
         os.remove(fp)
+
 
 def fix_seed(seed):
     os.environ["PYTHONHASHSEED"] = str(seed)
@@ -307,23 +288,23 @@ def fix_seed(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+
 def import_classes(config):
     # import Classes dynamically
     Model = getattr(
-        importlib.import_module(f"components.models"),
-        config["model"]["ClassName"]
+        importlib.import_module(f"components.models"), config["model"]["ClassName"]
     )
     Dataset = getattr(
         importlib.import_module(f"components.datamodule"),
-        config["datamodule"]["dataset"]["ClassName"]
+        config["datamodule"]["dataset"]["ClassName"],
     )
     DataModule = getattr(
         importlib.import_module(f"components.datamodule"),
-        config["datamodule"]["ClassName"]
+        config["datamodule"]["ClassName"],
     )
     Augmentation = getattr(
         importlib.import_module(f"components.augmentation"),
-        config["augmentation"]["ClassName"]
+        config["augmentation"]["ClassName"],
     )
     # debug message
     print("================================================")
@@ -335,19 +316,16 @@ def import_classes(config):
     print("================================================")
     return Model, Dataset, DataModule, Augmentation
 
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-c", "--config",
-        help="stem of config filepath.",
-        type=str,
-        required=True
+        "-c", "--config", help="stem of config filepath.", type=str, required=True
     )
     return parser.parse_args()
 
 
-if __name__=="__main__":
-
+if __name__ == "__main__":
     # args
     args = get_args()
     config = importlib.import_module(f"config.{args.config}").config
@@ -373,17 +351,12 @@ if __name__=="__main__":
 
         # Training
         optimizer = Optimizer(
-            Model,
-            DataModule,
-            Dataset,
-            Augmentation,
-            df_train,
-            config
+            Model, DataModule, Dataset, Augmentation, df_train, config
         )
 
         # Search HyperParams
         study = optuna.create_study(direction="minimize")
-        study.optimize(optimizer.run, n_trials=100, timeout=3600*9)
+        study.optimize(optimizer.run, n_trials=100, timeout=3600 * 9)
 
     finally:
         print(f"Number of finished trials: {len(study.trials)}")

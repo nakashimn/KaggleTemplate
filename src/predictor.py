@@ -12,10 +12,9 @@ import traceback
 from components.preprocessor import DataPreprocessor
 from config.sample import config
 
+
 class Predictor:
-    def __init__(
-        self, Model, Dataset, df_pred, config, transforms
-    ):
+    def __init__(self, Model, Dataset, df_pred, config, transforms):
         # const
         self.config = config
         self.df_pred = df_pred
@@ -40,11 +39,7 @@ class Predictor:
     def _create_dataloader(self):
         dataset = self.Dataset(df_pred, config["datamodule"]["dataset"])
         dataloader = DataLoader(
-            dataset=dataset,
-            num_workers=0,
-            batch_size=4,
-            shuffle=False,
-            drop_last=False
+            dataset=dataset, num_workers=0, batch_size=4, shuffle=False, drop_last=False
         )
         return dataloader
 
@@ -54,7 +49,7 @@ class Predictor:
             f"{self.config['path']['model_dir']}/{self.config['modelname']}.ckpt",
             config=self.config["model"],
             transforms=self.transforms,
-            map_location=torch.device(self.config["pred_device"])
+            map_location=torch.device(self.config["pred_device"]),
         )
 
         # prediction
@@ -67,18 +62,17 @@ class Predictor:
         probs = np.concatenate(probs_batch, axis=0)
         return probs
 
+
 class PredictorEnsemble(Predictor):
     def _predict(self, dataloader):
-
         probs_folds = []
         for fold in range(self.config["n_splits"]):
-
             # load model
             model = self.Model.load_from_checkpoint(
                 f"{self.config['path']['model_dir']}/{self.config['modelname']}_{fold}.ckpt",
                 config=self.config["model"],
                 transforms=self.transforms,
-                map_location=torch.device(self.config["pred_device"])
+                map_location=torch.device(self.config["pred_device"]),
             )
 
             # prediction
@@ -93,6 +87,7 @@ class PredictorEnsemble(Predictor):
         probs_ensemble = np.mean(probs_folds, axis=0)
         return probs_ensemble
 
+
 def fix_seed(seed):
     os.environ["PYTHONHASHSEED"] = str(seed)
     random.seed(seed)
@@ -101,6 +96,7 @@ def fix_seed(seed):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
 
 def fix_config_for_pred(config):
     if config["pred_device"] == "cpu":
@@ -111,23 +107,23 @@ def fix_config_for_pred(config):
         config["model"]["device"] = "cuda"
     return config
 
+
 def import_classes(config):
     # import Classes dynamically
     Model = getattr(
-        importlib.import_module(f"components.models"),
-        config["model"]["ClassName"]
+        importlib.import_module(f"components.models"), config["model"]["ClassName"]
     )
     Dataset = getattr(
         importlib.import_module(f"components.datamodule"),
-        config["datamodule"]["dataset"]["ClassName"]
+        config["datamodule"]["dataset"]["ClassName"],
     )
     DataModule = getattr(
         importlib.import_module(f"components.datamodule"),
-        config["datamodule"]["ClassName"]
+        config["datamodule"]["ClassName"],
     )
     Augmentation = getattr(
         importlib.import_module(f"components.augmentation"),
-        config["augmentation"]["ClassName"]
+        config["augmentation"]["ClassName"],
     )
     # debug message
     print("================================================")
@@ -139,18 +135,16 @@ def import_classes(config):
     print("================================================")
     return Model, Dataset, DataModule, Augmentation
 
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-c", "--config",
-        help="stem of config filepath.",
-        type=str,
-        required=True
+        "-c", "--config", help="stem of config filepath.", type=str, required=True
     )
     return parser.parse_args()
 
-if __name__=="__main__":
 
+if __name__ == "__main__":
     # args
     args = get_args()
     config = importlib.import_module(f"config.{args.config}").config
@@ -169,18 +163,12 @@ if __name__=="__main__":
         cls_predictor = PredictorEnsemble
     else:
         cls_predictor = Predictor
-    predictor = cls_predictor(
-        Model,
-        Dataset,
-        df_pred,
-        config,
-        None
-    )
+    predictor = cls_predictor(Model, Dataset, df_pred, config, None)
     probs = predictor.run()
 
     # output
-    submission = pd.concat([
-        df_pred,
-        pd.DataFrame(probs, columns=config["labels"]).drop("none", axis=1)
-    ], axis=1)
+    submission = pd.concat(
+        [df_pred, pd.DataFrame(probs, columns=config["labels"]).drop("none", axis=1)],
+        axis=1,
+    )
     submission.to_csv("submission.csv", index=None)
