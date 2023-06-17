@@ -3,13 +3,25 @@ import librosa
 import torch
 from torchvision import transforms as Tv
 from torchaudio import transforms as Ta
+from abc import ABC, abstractmethod
 from typing import Any
 import traceback
 
 ################################################################################
+# AbstractClass
+################################################################################
+class Augmentation(ABC):
+    def __call__(self, *args: Any) -> Any:
+        return self.run(*args)
+
+    @abstractmethod
+    def run(self, *args: Any) -> Any:
+        raise NotImplementedError()
+
+################################################################################
 # AudioAugmentation
 ################################################################################
-class SoundAugmentation:
+class SoundAugmentation(Augmentation):
     def __init__(
             self,
             sampling_rate: int = 32000,
@@ -50,12 +62,6 @@ class SoundAugmentation:
                 "range_rate": range_rate_time_stretch
             },
         }
-
-    def __call__(
-            self,
-            snd: np.ndarray
-        ) -> np.ndarray:
-        return self.run(snd)
 
     def run(
             self,
@@ -190,7 +196,7 @@ class LabelSmoothing:
         ) -> torch.Tensor:
         return torch.matmul(label.to(torch.float32), self.softlabels)
 
-class SpecAugmentation:
+class SpecAugmentation(Augmentation):
     def __init__(
             self,
             config: dict[str, Any]
@@ -247,13 +253,6 @@ class SpecAugmentation:
         if len(augmentations)==0:
             return None
         return Tv.Compose(augmentations)
-
-    def __call__(
-            self,
-            img: torch.Tensor,
-            label: torch.Tensor | None = None
-        ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
-        return self.run(img, label)
 
     def run(
             self,

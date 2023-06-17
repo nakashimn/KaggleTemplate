@@ -2,8 +2,20 @@ import os
 import glob
 import numpy as np
 import pandas as pd
+from abc import ABC, abstractmethod
 from typing import Any
 import traceback
+
+
+class Preprocessor(ABC):
+    def train_dataset(self, *args: Any) -> pd.DataFrame:
+        raise NotImplementedError()
+
+    def test_dataset(self, *args: Any) -> pd.DataFrame:
+        raise NotImplementedError()
+
+    def pred_dataset(self, *args: Any) -> pd.DataFrame:
+        raise NotImplementedError()
 
 class DataPreprocessor:
     def __init__(self, config: dict[str: Any]) -> None:

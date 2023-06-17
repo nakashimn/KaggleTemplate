@@ -4,24 +4,33 @@ import pathlib
 import copy
 import gc
 import datetime
+from numpy.typing import NDArray
 import pandas as pd
 import torch
+from torch.utils.data import Dataset
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import MLFlowLogger
-from pytorch_lightning import callbacks
+from pytorch_lightning import LightningModule, LightningDataModule, callbacks
 import sklearn.model_selection
+from typing import Any
 import traceback
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[0]))
 from utility import print_info
+from augmentations import Augmentation
 from pl_callbacks import ModelUploader
 from validations import MinLoss, ValidResult
 
 class Trainer:
     def __init__(
-        self, Model, DataModule, Dataset, Augmentation,
-        df_train, config
-    ):
+        self,
+        Model: LightningModule,
+        DataModule: LightningDataModule,
+        Dataset: Dataset,
+        Augmentation: Augmentation,
+        df_train: pd.DataFrame,
+        config: dict[str, Any]
+    ) -> None:
         # const
         self.config = config
         self.df_train = df_train
@@ -38,7 +47,7 @@ class Trainer:
         self.val_probs = ValidResult()
         self.val_labels = ValidResult()
 
-    def run(self):
+    def run(self) -> None:
         try:
             # idx_train, idx_val = self._split_dataset(self.df_train)
             kfold = sklearn.model_selection.StratifiedKFold(
@@ -56,7 +65,12 @@ class Trainer:
             print(traceback.format_exc())
             raise
 
-    def _run_unit(self, fold=None, idx_train=None, idx_val=None):
+    def _run_unit(
+            self,
+            fold: int | None = None,
+            idx_train: list[int] | None = None,
+            idx_val: list[int] | None = None
+        ) -> None:
         # create logger
         mlflow_logger = self._create_mlflow_logger(fold)
 
@@ -90,7 +104,10 @@ class Trainer:
             mlflow_logger.experiment.delete_run(mlflow_logger.run_id)
             raise
 
-    def _create_mlflow_logger(self, fold=None):
+    def _create_mlflow_logger(
+            self,
+            fold: int | None = None
+        ) -> MLFlowLogger:
         # create Logger instance
         experiment_name = f"{self.config['experiment_name']} [{self.timestamp}]"
         run_name = "All" if (fold is None) else f"fold{fold}"
@@ -112,7 +129,7 @@ class Trainer:
         )
         return mlflow_logger
 
-    def _create_transforms(self):
+    def _create_transforms(self) -> dict[str, Augmentation | None]:
         transforms = {
             "train": self.Augmentation(self.config["augmentation"]),
             "valid": None,
@@ -120,7 +137,12 @@ class Trainer:
         }
         return transforms
 
-    def _create_datamodule(self, idx_train=None, idx_val=None, transforms=None):
+    def _create_datamodule(
+            self,
+            idx_train: list[int] | None = None,
+            idx_val: list[int] | None = None,
+            transforms: dict[Augmentation | None] | None = None
+        ) -> LightningDataModule:
         # fold dataset
         if (idx_train is None):
             df_train_fold = self.df_train
@@ -142,7 +164,10 @@ class Trainer:
         )
         return datamodule
 
-    def _create_model(self, filepath_checkpoint=None):
+    def _create_model(
+            self,
+            filepath_checkpoint: str | None = None
+        ) -> LightningModule:
         if filepath_checkpoint is None:
             return self.Model(self.config["model"])
         if not self.config["init_with_checkpoint"]:
@@ -155,17 +180,20 @@ class Trainer:
         )
         return model
 
-    def _define_monitor_value(self, fold=None):
+    def _define_monitor_value(self, fold: int | None = None) -> str:
         return "train_loss" if (fold is None) else "val_loss"
 
-    def _define_checkpoint_name(self, fold=None):
+    def _define_checkpoint_name(self, fold: int | None = None) -> str:
         checkpoint_name = f"{self.config['modelname']}"
         if fold is None:
             return checkpoint_name
         checkpoint_name += f"_{fold}"
         return checkpoint_name
 
-    def _define_checkpoint_path(self, checkpoint_name):
+    def _define_checkpoint_path(
+            self,
+            checkpoint_name: str
+        ) -> dict[str, str | None]:
         filepath_ckpt_load = f"{self.config['path']['ckpt_dir']}/{checkpoint_name}.ckpt"
         filepath_ckpt_save = f"{self.config['path']['model_dir']}/{checkpoint_name}.ckpt"
         filepath_ckpt = {
@@ -181,7 +209,10 @@ class Trainer:
             filepath_ckpt["init"] = filepath_ckpt_load
         return filepath_ckpt
 
-    def _define_callbacks(self, callback_config):
+    def _define_callbacks(
+            self,
+            callback_config: dict[str, Any]
+        ) -> list[callbacks.Callback]:
         # define earlystopping
         earlystopping = callbacks.EarlyStopping(
             **callback_config["earlystopping"],
@@ -206,7 +237,14 @@ class Trainer:
         ]
         return callback_list
 
-    def _train(self, datamodule, fold=None, min_delta=0.0, min_loss=None, logger=None):
+    def _train(
+            self,
+            datamodule: LightningDataModule,
+            fold: int | None = None,
+            min_delta: float = 0.0,
+            min_loss: float | None = None,
+            logger: MLFlowLogger | None = None
+        ) -> float | None:
         # switch mode
         monitor = self._define_monitor_value(fold)
 
@@ -263,7 +301,12 @@ class Trainer:
 
         return min_loss
 
-    def _valid(self, datamodule, fold, logger=None):
+    def _valid(
+            self,
+            datamodule: LightningDataModule,
+            fold: int | None,
+            logger: MLFlowLogger | None = None
+        ) -> tuple[NDArray | None]:
         # load model
         model = self.Model(self.config["model"])
         model.eval()
