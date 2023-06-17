@@ -70,10 +70,7 @@ class SoundAugmentation(Augmentation):
             },
         }
 
-    def run(
-            self,
-            snd: NDArray
-        ) -> NDArray:
+    def run(self, snd: NDArray) -> NDArray:
         # check length
         if len(snd) < self.n_fft:
             return snd
@@ -106,23 +103,14 @@ class SoundAugmentation(Augmentation):
             snd: NDArray = librosa.effects.time_stretch(snd, rate=time_stretch_rate)
         return snd
 
-    def _is_applied(
-            self,
-            ratio: float
-        ) -> bool:
+    def _is_applied(self, ratio: float) -> bool:
         return np.random.choice([True,False], p=[ratio, 1-ratio])
 
-class Fadein:
-    def __init__(
-            self,
-            ratio: float = 0.5
-        ) -> None:
+class Fadein(Augmentation):
+    def __init__(self, ratio: float = 0.5) -> None:
         self.ratio: float = ratio
 
-    def __call__(
-            self,
-            x: NDArray
-        ) -> NDArray:
+    def run(self, x: NDArray) -> NDArray:
         fade_gain: float = np.random.uniform(
             1.0 / (x.shape[2] * self.ratio), 1.0
         )
@@ -132,17 +120,11 @@ class Fadein:
         ).to(torch.float32)
         return x * weights
 
-class Fadeout:
-    def __init__(
-            self,
-            ratio: float = 0.5
-        ) -> None:
+class Fadeout(Augmentation):
+    def __init__(self, ratio: float = 0.5) -> None:
         self.ratio: float = ratio
 
-    def __call__(
-            self,
-            x: NDArray
-        ):
+    def run(self,x: NDArray) -> torch.Tensor:
         fade_gain: float = np.random.uniform(
             1.0 / (x.shape[2] * self.ratio), 1.0
         )
@@ -155,21 +137,10 @@ class Fadeout:
         ).to(torch.float32)
         return x * weights
 
-class Mixup:
-    def __init__(
-            self,
-            alpha: float = 0.01,
-            device: str = "cuda"
-        ) -> None:
+class Mixup(Augmentation):
+    def __init__(self, alpha: float = 0.01, device: str = "cuda") -> None:
         self.alpha: float = alpha
         self.rand_generator: Distribution = torch.distributions.beta.Beta(alpha, alpha)
-
-    def __call__(
-            self,
-            img: torch.Tensor,
-            label: torch.Tensor
-        ) -> tuple[torch.Tensor, torch.Tensor]:
-        return self.run(img, label)
 
     def run(
             self,
@@ -181,7 +152,7 @@ class Mixup:
         label_mixup: torch.Tensor = lam * label + (1 - lam) * label.roll(shifts=1, dims=0)
         return img_mixup, label_mixup
 
-class LabelSmoothing:
+class LabelSmoothing(Augmentation):
     def __init__(
             self,
             eps: float = 0.01,
@@ -190,9 +161,6 @@ class LabelSmoothing:
         ) -> None:
         eyes: torch.Tensor = torch.eye(n_class)
         self.softlabels: torch.Tensor = torch.where(eyes<=0, eps/(n_class-1), 1-eps).to(torch.float32).to(device)
-
-    def __call__(self, label: torch.Tensor) -> torch.Tensor:
-        return self.run(label)
 
     def run(self, label: torch.Tensor) -> torch.Tensor:
         return torch.matmul(label.to(torch.float32), self.softlabels)
