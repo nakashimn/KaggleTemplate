@@ -53,11 +53,13 @@ class ImgDataset(Dataset):
             return img, labels
         return img
 
-    def _read_filepaths(self, df: pd.DataFrame) -> NDArray:
+    @staticmethod
+    def _read_filepaths(df: pd.DataFrame) -> NDArray:
         values: NDArray = df["filepath"].values
         return values
 
-    def _read_img(self, filepath: str) -> NDArray:
+    @staticmethod
+    def _read_img(filepath: str) -> NDArray:
         img: NDArray = cv2.imread(filepath)
         return img
 
@@ -107,16 +109,19 @@ class AudioDataset(Dataset):
             return melspec, labels
         return melspec
 
-    def _read_filepaths(self, df: pd.DataFrame) -> NDArray:
+    @staticmethod
+    def _read_filepaths(df: pd.DataFrame) -> NDArray:
         values: NDArray = df["filepath"].values
         return values
 
-    def _read_melspec(self, filepath: str) -> NDArray:
+    @staticmethod
+    def _read_melspec(filepath: str) -> NDArray:
         melspec: NDArray = np.load(filepath)["arr_0"]
         melspec = np.expand_dims(melspec, axis=-1)
         return melspec
 
-    def _normalize(self, melspec: NDArray, eps: float = 1e-6) -> NDArray:
+    @staticmethod
+    def _normalize(melspec: NDArray, eps: float = 1e-6) -> NDArray:
         melspec: NDArray = (melspec - melspec.mean()) / (melspec.std() + eps)
         if (melspec.max() - melspec.min()) < eps:
             return np.zeros_like(melspec, dtype=np.uint8)
@@ -160,8 +165,9 @@ class DataModule(LightningDataModule):
         # class
         self.Dataset = Dataset
 
+    @staticmethod
     def _read_transforms(
-        self, transforms: Transforms | None
+        transforms: Transforms | None
     ) -> dict[str, Transforms | None]:
         if transforms is not None:
             return transforms

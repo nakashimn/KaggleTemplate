@@ -105,7 +105,8 @@ class CMeanAveragePrecision:
         self.padded_probs: NDArray = self._padding(self.probs, config["padding_num"])
         self.padded_labels: NDArray = self._padding(self.labels, config["padding_num"])
 
-    def _padding(self, values: NDArray, padding_num: int | float) -> NDArray:
+    @staticmethod
+    def _padding(values: NDArray, padding_num: int | float) -> NDArray:
         padded_values: NDArray = np.concatenate(
             [values, np.ones([padding_num, values.shape[1]], dtype=values.dtype)]
         )

@@ -177,7 +177,8 @@ class Trainer:
         )
         return model
 
-    def _define_monitor_value(self, fold: int | None = None) -> str:
+    @staticmethod
+    def _define_monitor_value(fold: int | None = None) -> str:
         return "train_loss" if (fold is None) else "val_loss"
 
     def _define_checkpoint_name(self, fold: int | None = None) -> str:

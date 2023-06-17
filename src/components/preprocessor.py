@@ -49,5 +49,6 @@ class DataPreprocessor:
         df: pd.DataFrame = pd.DataFrame(filepaths, columns=["filepath"])
         return df
 
-    def _cleansing(self, df) -> pd.DataFrame:
+    @staticmethod
+    def _cleansing(df) -> pd.DataFrame:
         return df

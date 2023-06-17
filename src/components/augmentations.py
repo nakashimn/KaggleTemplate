@@ -104,7 +104,8 @@ class SoundAugmentation(Augmentation):
             snd = librosa.effects.time_stretch(snd, rate=time_stretch_rate)
         return snd
 
-    def _is_applied(self, ratio: float) -> bool:
+    @staticmethod
+    def _is_applied(ratio: float) -> bool:
         return np.random.choice([True, False], p=[ratio, 1 - ratio])
 
 
