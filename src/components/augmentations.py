@@ -22,7 +22,6 @@ class Augmentation(ABC):
     def __call__(self, *args: Any) -> Any:
         return self.run(*args)
 
-    @abstractmethod
     def run(self, *args: Any) -> Any:
         raise NotImplementedError()
 
