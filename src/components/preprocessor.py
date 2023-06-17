@@ -7,6 +7,9 @@ from typing import Any
 import traceback
 
 
+################################################################################
+# AbstractClass
+################################################################################
 class Preprocessor(ABC):
     def train_dataset(self, *args: Any) -> pd.DataFrame:
         raise NotImplementedError()
@@ -17,12 +20,15 @@ class Preprocessor(ABC):
     def pred_dataset(self, *args: Any) -> pd.DataFrame:
         raise NotImplementedError()
 
+################################################################################
+# Data Preprocessor
+################################################################################
 class DataPreprocessor:
     def __init__(self, config: dict[str: Any]) -> None:
-        self.config = config
+        self.config: dict[str, Any] = config
 
     def train_dataset(self) -> pd.DataFrame:
-        df_meta = pd.read_csv(self.config["path"]["trainmeta"])
+        df_meta: pd.DataFrame = pd.read_csv(self.config["path"]["trainmeta"])
         df_meta = self._cleansing(df_meta)
         df_meta["label_id"] = self._label_to_id(df_meta)
         return df_meta
@@ -31,15 +37,15 @@ class DataPreprocessor:
         return [self.config["labels"].index(l) for l in df["label"]]
 
     def test_dataset(self) -> pd.DataFrame:
-        df_meta = pd.read_csv(self.config["path"]["testmeta"])
+        df_meta: pd.DataFrame = pd.read_csv(self.config["path"]["testmeta"])
         df_meta = self._cleansing(df_meta)
         return df_meta
 
     def pred_dataset(self) -> pd.DataFrame:
-        filepaths = glob.glob(
+        filepaths: list[str] = glob.glob(
             f"{self.config['path']['preddata']}/**/*.npz", recursive=True
         )
-        df = pd.DataFrame(filepaths, columns=["filepath"])
+        df: pd.DataFrame = pd.DataFrame(filepaths, columns=["filepath"])
         return df
 
     def _cleansing(self, df) -> pd.DataFrame:

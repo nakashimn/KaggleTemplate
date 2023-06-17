@@ -11,10 +11,10 @@ class ModelUploader(callbacks.Callback):
             every_n_epochs: int = 5,
             message: str = ""
         ) -> None:
-        self.model_dir = model_dir
-        self.every_n_epochs = every_n_epochs
-        self.message = message
-        self.should_upload = False
+        self.model_dir: str = model_dir
+        self.every_n_epochs: int = every_n_epochs
+        self.message: str = message
+        self.should_upload: bool = False
         super().__init__()
 
     def on_save_checkpoint(
@@ -31,10 +31,7 @@ class ModelUploader(callbacks.Callback):
         return super().on_save_checkpoint(trainer, pl_module, checkpoint)
 
     def on_train_epoch_start(
-            self,
-            trainer: Trainer,
-            pl_module: LightningModule
-        ) -> None:
+            self, trainer: Trainer, pl_module: LightningModule) -> None:
         if self.every_n_epochs is None:
             return super().on_train_epoch_end(trainer, pl_module)
         if (self.every_n_epochs <= 0):
@@ -56,10 +53,7 @@ class ModelUploader(callbacks.Callback):
             )
         return super().on_train_end(trainer, pl_module)
 
-    def _upload_model(
-            self,
-            message: str
-        ) -> None:
+    def _upload_model(self, message: str) -> None:
         try:
             subprocess.run(
                 ["kaggle", "datasets", "version", "-m", message],
