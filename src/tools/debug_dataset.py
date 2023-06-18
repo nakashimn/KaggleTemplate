@@ -1,18 +1,19 @@
 import os
+import pathlib
 import random
 import sys
-import pathlib
-from tqdm import tqdm
+import traceback
+
 import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
-import traceback
+from tqdm import tqdm
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
-from config.sample import config
+from components.datamodule import DataModule, ImgDataset
 from components.preprocessor import DataPreprocessor
-from components.datamodule import ImgDataset, DataModule
+from config.sample import config
 
 ###
 # sample
