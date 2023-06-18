@@ -1,27 +1,38 @@
+# debug
 ipykernel
 ipywidgets
-protobuf<4.21.0
-pyyaml<6.0
+protobuf
+pyyaml
+
+# utility
 tqdm
-numpy==1.22
+kaggle
+black
+urllib3==1.26.16
+
+# data analysis
+numpy
 pandas
 matplotlib
 seaborn
-kaggle
-opencv-python
-lightgbm
-torch
-torchvision
-torchaudio
-pytorch-lightning
-pytorch-tabnet
-transformers
-sentencepiece
-nltk
-timm
-bertopic
-optuna
 mlflow
-black
-dvc
-googletrans==4.0.0-rc1
+
+# deeplearning
+torch
+pytorch-lightning
+transformers
+optuna
+albumentations
+lightly
+
+# table
+lightgbm
+
+# image
+opencv-python
+timm
+torchvision
+
+# audio
+librosa
+torchaudio

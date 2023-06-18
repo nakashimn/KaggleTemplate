@@ -1,34 +1,41 @@
 config = {
-    "n_splits": 3,
     "random_seed": 57,
-    "id": "<id>",
-    "features": [
-        "<featureA>",
-        "<featureB>"
-    ],
-    "label": "<label>",
-    "group": "<group>",
-    "labels": [
-        "labelA",
-        "labelB"
-    ],
-    "experiment_name": "sample-v0",
+    "pred_device": "cuda",
+    "label": "label",
+    "labels": ["A", "B", "C"],
+    "experiment_name": "sample",
     "path": {
-        "traindata": "/kaggle/input/<TrainData.csv>",
-        "testdata": "/kaggle/input/<TestData.csv>",
+        "traindata": "/workspace/data/sample/img/",
+        "trainmeta": "/workspace/data/sample/labels.csv",
+        "testdata": "/workspace/data/sample/img/",
+        "testmeta": "/workspace/data/sample/labels.csv",
+        "preddata": "/workspace/data/sample/img/",
         "temporal_dir": "../tmp/artifacts/",
-        "model_dir": "/kaggle/input/<ModelDir>/"
+        "model_dir": "/kaggle/input/model/",
+        "ckpt_dir": "/workspace/tmp/checkpoint/"
     },
     "modelname": "best_loss",
-    "pred_ensemble": True,
-    "train_with_alldata": False
+    "init_with_checkpoint": False,
+    "resume": False,
+    "upload_every_n_epochs": 5,
+    "pred_ensemble": False,
+    "train_with_alldata": True
+}
+config["augmentation"] = {
+    "ClassName": "SpecAugmentation"
 }
 config["model"] = {
-    "base_model_name": "/kaggle/input/<BaseModelDir>",
-    "dim_feature": 768,
-    "num_class": 3,
-    "dropout_rate": 0.5,
-    "freeze_base_model": False,
+    "ClassName": "EfficientNetModel",
+    "base_model_name": "tf_efficientnet_b0_ns",
+    "num_class": len(config["labels"]),
+    "fc_mid_dim": 1024,
+    "gradient_checkpointing": True,
+    "mixup": {
+        "alpha": 0.2
+    },
+    "label_smoothing": {
+        "eps": 0.01
+    },
     "loss": {
         "name": "nn.CrossEntropyLoss",
         "params": {
@@ -38,23 +45,22 @@ config["model"] = {
     "optimizer":{
         "name": "optim.RAdam",
         "params":{
-            "lr": 1e-5
+            "lr": 1e-3
         },
     },
     "scheduler":{
         "name": "optim.lr_scheduler.CosineAnnealingWarmRestarts",
         "params":{
-            "T_0": 20,
-            "eta_min": 1e-4,
+            "T_0": 40,
+            "eta_min": 0,
         }
     }
 }
 config["earlystopping"] = {
-    "patience": 1
+    "patience": 3
 }
 config["checkpoint"] = {
-    "dirpath": config["path"]["temporal_dir"],
-    "monitor": "val_loss",
+    "dirpath": config["path"]["model_dir"],
     "save_top_k": 1,
     "mode": "min",
     "save_last": False,
@@ -63,53 +69,27 @@ config["checkpoint"] = {
 config["trainer"] = {
     "accelerator": "gpu",
     "devices": 1,
-    "max_epochs": 100,
+    "max_epochs": 10,
     "accumulate_grad_batches": 1,
-    "fast_dev_run": False,
-    "deterministic": True,
-    "num_sanity_val_steps": 0,
-    "resume_from_checkpoint": None,
-    "precision": 16
-}
-config["kfold"] = {
-    "name": "StratifiedGroupKFold",
-    "params": {
-        "n_splits": config["n_splits"],
-        "shuffle": True,
-        "random_state": config["random_seed"]
-    }
+    "deterministic": False,
+    "precision": 32
 }
 config["datamodule"] = {
+    "ClassName": "DataModule",
     "dataset":{
+        "ClassName": "ImgDataset",
         "base_model_name": config["model"]["base_model_name"],
         "num_class": config["model"]["num_class"],
-        "features": config["features"],
         "label": config["label"],
-        "use_fast_tokenizer": True,
-        "max_length": 512
+        "labels": config["labels"],
+        "path": config["path"],
+        "mean": 0.485,
+        "std": 0.229
     },
-    "train_loader": {
-        "batch_size": 16,
-        "shuffle": True,
-        "num_workers": 16,
-        "pin_memory": True,
-        "drop_last": True,
-    },
-    "val_loader": {
-        "batch_size": 16,
-        "shuffle": False,
-        "num_workers": 16,
-        "pin_memory": True,
-        "drop_last": False
-    },
-    "pred_loader": {
-        "batch_size": 16,
-        "shuffle": False,
-        "num_workers": 16,
-        "pin_memory": False,
-        "drop_last": False
+    "dataloader": {
+        "batch_size": 2,
+        "num_workers": 8
     }
 }
 config["Metrics"] = {
-    "label": config["labels"]
 }

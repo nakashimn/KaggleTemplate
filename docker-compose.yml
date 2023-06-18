@@ -12,16 +12,12 @@ services:
            - driver: nvidia
              capabilities: ["gpu"]
     volumes:
-      - ./:/workspace:cached
-      - ./kaggle:/kaggle:cached
-      - ${DATASTORAGE_PATH}:/data_storage:cached
-      - ${MLFLOW_STORAGE_PATH}:/content/drive/MyDrive/Colab Notebooks/mlruns
-      - ${MLFLOW_STORAGE_PATH}:/workspace/log/google_drive/mlruns
+      - ${PWD}/:/workspace:cached
+      - ${PWD}/kaggle:/kaggle:cached
+      - ${PWD}/log/mlruns:/workspace/log/mlruns
     environment:
       TZ: Asia/Tokyo
       KAGGLE_USERNAME: ${KAGGLE_USERNAME}
       KAGGLE_KEY: ${KAGGLE_KEY}
-      MLFLOW_TRACKING_URI: /workspace/log/local/mlruns
-      DISPLAY: host.docker.internal:0.0
-      PULSE_SERVER: tcp:host.docker.internal
+      MLFLOW_TRACKING_URI: /workspace/log/mlruns
     tty: true
