@@ -37,7 +37,7 @@ def import_classes(
     Model = getattr(
         importlib.import_module(f"components.models"), config["model"]["ClassName"]
     )
-    Dataset = getattr(
+    Data = getattr(
         importlib.import_module(f"components.datamodule"),
         config["datamodule"]["dataset"]["ClassName"],
     )
@@ -45,7 +45,7 @@ def import_classes(
         importlib.import_module(f"components.datamodule"),
         config["datamodule"]["ClassName"],
     )
-    Augmentation = getattr(
+    Aug = getattr(
         importlib.import_module(f"components.augmentations"),
         config["augmentation"]["ClassName"],
     )
@@ -54,13 +54,13 @@ def import_classes(
         {
             "Components": {
                 "Model": Model.__name__,
-                "Dataset": Dataset.__name__,
+                "Dataset": Data.__name__,
                 "DataModule": DataModule.__name__,
-                "Augmentation": Augmentation.__name__,
+                "Augmentation": Aug.__name__,
             }
         }
     )
-    return Model, Dataset, DataModule, Augmentation
+    return Model, Data, DataModule, Aug
 
 
 def get_args() -> Namespace:
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     from config.sample import config
 
     # import Classes
-    Model, Dataset, DataModule, Augmentation = import_classes(config)
+    Model, Data, DataModule, Aug = import_classes(config)
 
     # update config
     update_config(config, f"./config/{args.config}.py")
@@ -96,5 +96,5 @@ if __name__ == "__main__":
     df_train = data_preprocessor.train_dataset()
 
     # Training
-    trainer = Trainer(Model, DataModule, Dataset, Augmentation, df_train, config)
+    trainer = Trainer(Model, DataModule, Data, Aug, df_train, config)
     trainer.run()

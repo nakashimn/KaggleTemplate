@@ -27,8 +27,8 @@ class Trainer:
         self,
         Model: LightningModule,
         DataModule: LightningDataModule,
-        Dataset: Dataset,
-        Augmentation: Augmentation,
+        Data: Dataset,
+        Aug: Augmentation,
         df_train: pd.DataFrame,
         config: dict[str, Any],
     ) -> None:
@@ -40,8 +40,8 @@ class Trainer:
         # Class
         self.Model = Model
         self.DataModule = DataModule
-        self.Dataset = Dataset
-        self.Augmentation = Augmentation
+        self.Data = Data
+        self.Aug = Aug
 
         # variable
         self.min_loss = MinLoss()
@@ -132,7 +132,7 @@ class Trainer:
 
     def _create_transforms(self) -> dict[str, Augmentation | None]:
         transforms = {
-            "train": self.Augmentation(self.config["augmentation"]),
+            "train": self.Aug(self.config["augmentation"]),
             "valid": None,
             "pred": None,
         }
@@ -159,7 +159,7 @@ class Trainer:
             df_train=df_train_fold,
             df_val=df_val_fold,
             df_pred=None,
-            Dataset=self.Dataset,
+            Data=self.Data,
             config=self.config["datamodule"],
             transforms=transforms,
         )

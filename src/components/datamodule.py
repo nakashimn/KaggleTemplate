@@ -149,7 +149,7 @@ class DataModule(LightningDataModule):
         df_train: pd.DataFrame | None,
         df_val: pd.DataFrame | None,
         df_pred: pd.DataFrame | None,
-        Dataset: Dataset,
+        Data: Dataset,
         config: dict[str, Any],
         transforms: Transforms | None,
     ) -> None:
@@ -163,7 +163,7 @@ class DataModule(LightningDataModule):
         self.transforms: Transforms | None = self._read_transforms(transforms)
 
         # class
-        self.Dataset = Dataset
+        self.Data = Data
 
     @staticmethod
     def _read_transforms(
@@ -176,7 +176,7 @@ class DataModule(LightningDataModule):
     def train_dataloader(self) -> DataLoader | None:
         if (self.df_train is None) or (len(self.df_train) == 0):
             return None
-        dataset: Dataset = self.Dataset(
+        dataset: Dataset = self.Data(
             self.df_train, self.config["dataset"], self.transforms["train"]
         )
         dataloader: DataLoader = DataLoader(
@@ -191,7 +191,7 @@ class DataModule(LightningDataModule):
     def val_dataloader(self) -> DataLoader | None:
         if (self.df_val is None) or (len(self.df_val) == 0):
             return None
-        dataset: Dataset = self.Dataset(
+        dataset: Dataset = self.Data(
             self.df_val, self.config["dataset"], self.transforms["valid"]
         )
         dataloader: DataLoader = DataLoader(
@@ -206,7 +206,7 @@ class DataModule(LightningDataModule):
     def predict_dataloader(self) -> DataLoader | None:
         if (self.df_pred is None) or (len(self.df_pred) == 0):
             return None
-        dataset: Dataset = self.Dataset(
+        dataset: Dataset = self.Data(
             self.df_pred, self.config["dataset"], self.transforms["pred"]
         )
         dataloader: DataLoader = DataLoader(
