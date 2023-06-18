@@ -1,8 +1,9 @@
 import os
 import subprocess
-from pytorch_lightning import callbacks, Trainer, LightningModule
-from typing import Any
 import traceback
+from typing import Any
+
+from pytorch_lightning import LightningModule, Trainer, callbacks
 
 
 class ModelUploader(callbacks.Callback):

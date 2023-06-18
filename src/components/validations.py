@@ -1,13 +1,14 @@
-import numpy as np
-from numpy.typing import NDArray
-import pandas as pd
-from sklearn.metrics import confusion_matrix, f1_score, average_precision_score
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
-import seaborn as sns
-from typing import Any
 import traceback
+from typing import Any
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from numpy.typing import NDArray
+from sklearn.metrics import average_precision_score, confusion_matrix, f1_score
 
 
 class MinLoss:

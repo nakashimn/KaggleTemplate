@@ -1,19 +1,20 @@
 import os
-import sys
 import pathlib
+import sys
+import traceback
+from typing import Any
+
 import numpy as np
-from numpy.typing import NDArray
+import timm
 import torch
+from numpy.typing import NDArray
+from pytorch_lightning import LightningModule
 from torch import nn, optim
 from torch.nn import functional as F
 from torch.utils.checkpoint import checkpoint
-from pytorch_lightning import LightningModule
-import timm
-from typing import Any
-import traceback
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[0]))
-from augmentations import Augmentation, Mixup, LabelSmoothing
+from augmentations import Augmentation, LabelSmoothing, Mixup
 
 
 ################################################################################
