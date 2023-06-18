@@ -42,9 +42,9 @@ class EfficientNetModel(LightningModule):
         self.validation_step_outputs: list[dict[str, Any]] = []
         self.val_probs: NDArray | float = np.nan
         self.val_labels: NDArray | float = np.nan
-        self.min_loss: NDArray | float = np.nan
+        self.min_loss: float = np.nan
 
-    def _create_model(self) -> tuple[nn.Sequential]:
+    def _create_model(self) -> tuple[nn.Sequential, nn.Sequential]:
         # basemodel
         base_model = timm.create_model(
             self.config["base_model_name"],
@@ -98,7 +98,7 @@ class EfficientNetModel(LightningModule):
         logits: torch.Tensor = self.forward(img)
         loss: torch.Tensor = self.criterion(logits, labels)
         logit: torch.Tensor = logits.detach()
-        prob: torch.Tensor = logits.softmax(axis=1).detach()
+        prob: torch.Tensor = logits.softmax(dim=1).detach()
         label: torch.Tensor = labels.detach()
         outputs: dict[str, torch.Tensor] = {
             "loss": loss,
@@ -114,7 +114,7 @@ class EfficientNetModel(LightningModule):
     ) -> dict[str, torch.Tensor]:
         img: torch.Tensor = batch
         logits: torch.Tensor = self.forward(img)
-        prob: torch.Tensor = logits.softmax(axis=1).detach()
+        prob: torch.Tensor = logits.softmax(dim=1).detach()
         return {"prob": prob}
 
     def on_train_epoch_end(self) -> None:
@@ -125,7 +125,7 @@ class EfficientNetModel(LightningModule):
             [out["label"] for out in self.training_step_outputs]
         )
         metrics: torch.Tensor = self.criterion(logits, labels)
-        self.min_loss: float = np.nanmin(
+        self.min_loss = np.nanmin(
             [self.min_loss, metrics.detach().cpu().numpy()]
         )
         self.log(f"train_loss", metrics)
@@ -145,12 +145,12 @@ class EfficientNetModel(LightningModule):
         metrics: torch.Tensor = self.criterion(logits, labels)
         self.log(f"val_loss", metrics)
 
-        self.val_probs: NDArray = probs.detach().cpu().numpy()
-        self.val_labels: NDArray = labels.detach().cpu().numpy()
+        self.val_probs = probs.detach().cpu().numpy()
+        self.val_labels = labels.detach().cpu().numpy()
 
         return super().on_validation_epoch_end()
 
-    def configure_optimizers(self) -> tuple[list]:
+    def configure_optimizers(self) -> tuple[list, list]:
         optimizer = eval(self.config["optimizer"]["name"])(
             self.parameters(), **self.config["optimizer"]["params"]
         )

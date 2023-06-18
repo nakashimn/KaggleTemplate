@@ -17,7 +17,7 @@ class ModelUploader(callbacks.Callback):
         super().__init__()
 
     def on_save_checkpoint(
-        self, trainer: Trainer, pl_module: LightningModule, checkpoint: dict[str | Any]
+        self, trainer: Trainer, pl_module: LightningModule, checkpoint: dict[str, Any]
     ) -> None:
         if self.should_upload:
             self._upload_model(f"{self.message}[epoch:{trainer.current_epoch}]")

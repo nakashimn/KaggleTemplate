@@ -15,7 +15,7 @@ class MinLoss:
     def __init__(self) -> None:
         self.value: float = np.nan
 
-    def update(self, min_loss: int | float) -> None:
+    def update(self, min_loss: float | None) -> None:
         self.value = np.nanmin([self.value, min_loss])
 
 
@@ -67,7 +67,7 @@ class F1Score:
         # variables
         self.f1_scores: dict[str, float | None] = {"macro": None, "micro": None}
 
-    def calc(self) -> dict[str, float | NDArray]:
+    def calc(self) -> dict[str, float | None]:
         idx_probs: int = np.argmax(self.probs, axis=1)
         idx_labels: int = np.argmax(self.labels, axis=1)
         self.f1_scores = {
@@ -107,7 +107,7 @@ class CMeanAveragePrecision:
         self.padded_labels: NDArray = self._padding(self.labels, config["padding_num"])
 
     @staticmethod
-    def _padding(values: NDArray, padding_num: int | float) -> NDArray:
+    def _padding(values: NDArray, padding_num: int) -> NDArray:
         padded_values: NDArray = np.concatenate(
             [values, np.ones([padding_num, values.shape[1]], dtype=values.dtype)]
         )

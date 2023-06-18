@@ -44,7 +44,7 @@ class ImgDataset(Dataset):
         return len(self.filepaths)
 
     def __getitem__(self, idx: int) -> torch.Tensor | tuple[torch.Tensor]:
-        img: NDArray = self._read_img(self.filepaths[idx])
+        img = self._read_img(self.filepaths[idx])
         img = self.pre_transform(image=img)["image"]
         img = self.to_tensor(img)
         if self.transform is not None:

@@ -143,7 +143,7 @@ class Trainer:
         self,
         idx_train: list[int] | None = None,
         idx_val: list[int] | None = None,
-        transforms: dict[Augmentation | None] | None = None,
+        transforms: dict[str, Augmentation | None] | None = None,
     ) -> LightningDataModule:
         # fold dataset
         if idx_train is None:
