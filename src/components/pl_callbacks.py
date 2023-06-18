@@ -1,8 +1,9 @@
 import os
 import subprocess
-from pytorch_lightning import callbacks, Trainer, LightningModule
-from typing import Any
 import traceback
+from typing import Any
+
+from pytorch_lightning import LightningModule, Trainer, callbacks
 
 
 class ModelUploader(callbacks.Callback):
@@ -16,7 +17,7 @@ class ModelUploader(callbacks.Callback):
         super().__init__()
 
     def on_save_checkpoint(
-        self, trainer: Trainer, pl_module: LightningModule, checkpoint: dict[str | Any]
+        self, trainer: Trainer, pl_module: LightningModule, checkpoint: dict[str, Any]
     ) -> None:
         if self.should_upload:
             self._upload_model(f"{self.message}[epoch:{trainer.current_epoch}]")

@@ -1,33 +1,24 @@
 import os
+import pathlib
 import random
 import sys
-import pathlib
-from tqdm import tqdm
+import traceback
+
 import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
-import traceback
+from tqdm import tqdm
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
-from config.sample import config
+from components.datamodule import DataModule, ImgDataset
 from components.preprocessor import DataPreprocessor
-from components.datamodule import ImgDataset, DataModule
-
-def fix_seed(seed):
-    os.environ["PYTHONHASHSEED"] = str(seed)
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+from config.sample import config
 
 ###
 # sample
 ###
 # prepare input
-fix_seed(config["random_seed"])
 data_preprocessor = DataPreprocessor(config)
 df_train = data_preprocessor.train_dataset()
 df_test = data_preprocessor.test_dataset()
@@ -41,7 +32,7 @@ try:
     )
     for i in tqdm(range(dataset.__len__())):
         batch = dataset.__getitem__(i)
-        print(batch)
+
 except:
     print(traceback.format_exc())
 

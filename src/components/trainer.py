@@ -1,24 +1,25 @@
-import os
-import sys
-import pathlib
 import copy
-import gc
 import datetime
-from numpy.typing import NDArray
-import pandas as pd
-import torch
-from torch.utils.data import Dataset
-import pytorch_lightning as pl
-from pytorch_lightning.loggers import MLFlowLogger
-from pytorch_lightning import LightningModule, LightningDataModule, callbacks
-import sklearn.model_selection
-from typing import Any
+import gc
+import os
+import pathlib
+import sys
 import traceback
+from typing import Any
+
+import pandas as pd
+import pytorch_lightning as pl
+import sklearn.model_selection
+import torch
+from numpy.typing import NDArray
+from pytorch_lightning import LightningDataModule, LightningModule, callbacks
+from pytorch_lightning.loggers import MLFlowLogger
+from torch.utils.data import Dataset
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[0]))
-from utility import print_info
 from augmentations import Augmentation
 from pl_callbacks import ModelUploader
+from utility import print_info
 from validations import MinLoss, ValidResult
 
 
@@ -27,8 +28,8 @@ class Trainer:
         self,
         Model: LightningModule,
         DataModule: LightningDataModule,
-        Dataset: Dataset,
-        Augmentation: Augmentation,
+        Data: Dataset,
+        Aug: Augmentation,
         df_train: pd.DataFrame,
         config: dict[str, Any],
     ) -> None:
@@ -40,8 +41,8 @@ class Trainer:
         # Class
         self.Model = Model
         self.DataModule = DataModule
-        self.Dataset = Dataset
-        self.Augmentation = Augmentation
+        self.Data = Data
+        self.Aug = Aug
 
         # variable
         self.min_loss = MinLoss()
@@ -132,7 +133,7 @@ class Trainer:
 
     def _create_transforms(self) -> dict[str, Augmentation | None]:
         transforms = {
-            "train": self.Augmentation(self.config["augmentation"]),
+            "train": self.Aug(self.config["augmentation"]),
             "valid": None,
             "pred": None,
         }
@@ -142,7 +143,7 @@ class Trainer:
         self,
         idx_train: list[int] | None = None,
         idx_val: list[int] | None = None,
-        transforms: dict[Augmentation | None] | None = None,
+        transforms: dict[str, Augmentation | None] | None = None,
     ) -> LightningDataModule:
         # fold dataset
         if idx_train is None:
@@ -159,7 +160,7 @@ class Trainer:
             df_train=df_train_fold,
             df_val=df_val_fold,
             df_pred=None,
-            Dataset=self.Dataset,
+            Data=self.Data,
             config=self.config["datamodule"],
             transforms=transforms,
         )

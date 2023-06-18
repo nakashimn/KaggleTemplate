@@ -1,20 +1,21 @@
-import numpy as np
-from numpy.typing import NDArray
-import pandas as pd
-from sklearn.metrics import confusion_matrix, f1_score, average_precision_score
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
-import seaborn as sns
-from typing import Any
 import traceback
+from typing import Any
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from numpy.typing import NDArray
+from sklearn.metrics import average_precision_score, confusion_matrix, f1_score
 
 
 class MinLoss:
     def __init__(self) -> None:
         self.value: float = np.nan
 
-    def update(self, min_loss: int | float) -> None:
+    def update(self, min_loss: float | None) -> None:
         self.value = np.nanmin([self.value, min_loss])
 
 
@@ -66,7 +67,7 @@ class F1Score:
         # variables
         self.f1_scores: dict[str, float | None] = {"macro": None, "micro": None}
 
-    def calc(self) -> dict[str, float | NDArray]:
+    def calc(self) -> dict[str, float | None]:
         idx_probs: int = np.argmax(self.probs, axis=1)
         idx_labels: int = np.argmax(self.labels, axis=1)
         self.f1_scores = {
@@ -106,7 +107,7 @@ class CMeanAveragePrecision:
         self.padded_labels: NDArray = self._padding(self.labels, config["padding_num"])
 
     @staticmethod
-    def _padding(values: NDArray, padding_num: int | float) -> NDArray:
+    def _padding(values: NDArray, padding_num: int) -> NDArray:
         padded_values: NDArray = np.concatenate(
             [values, np.ones([padding_num, values.shape[1]], dtype=values.dtype)]
         )

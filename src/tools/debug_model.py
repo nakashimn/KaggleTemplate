@@ -1,12 +1,13 @@
-import sys
 import pathlib
-import numpy as np
-import torch
+import sys
 import traceback
 
+import numpy as np
+import torch
+
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
-from config.sample import config
 from components.models import EfficientNetModel
+from config.sample import config
 
 ###
 # sample
