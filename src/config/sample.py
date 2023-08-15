@@ -1,7 +1,10 @@
 config = {
     "random_seed": 57,
     "pred_device": "cuda",
+    "n_splits": 5,
     "label": "label",
+    "train_folds": [0],
+    "train_with_alldata": True,
     "labels": ["A", "B", "C"],
     "experiment_name": "sample",
     "path": {
@@ -19,10 +22,9 @@ config = {
     "resume": False,
     "upload_every_n_epochs": 5,
     "pred_ensemble": False,
-    "train_with_alldata": True
 }
 config["augmentation"] = {
-    "ClassName": "SpecAugmentation"
+    "ClassName": "SpecAugmentation",
 }
 config["model"] = {
     "ClassName": "EfficientNetModel",
@@ -31,21 +33,21 @@ config["model"] = {
     "fc_mid_dim": 1024,
     "gradient_checkpointing": True,
     "mixup": {
-        "alpha": 0.2
+        "alpha": 0.2,
     },
     "label_smoothing": {
-        "eps": 0.01
+        "eps": 0.01,
     },
     "loss": {
         "name": "nn.CrossEntropyLoss",
         "params": {
-            "weight": None
+            "weight": None,
         }
     },
     "optimizer":{
         "name": "optim.RAdam",
         "params":{
-            "lr": 1e-3
+            "lr": 1e-3,
         },
     },
     "scheduler":{
@@ -57,14 +59,14 @@ config["model"] = {
     }
 }
 config["earlystopping"] = {
-    "patience": 3
+    "patience": 3,
 }
 config["checkpoint"] = {
     "dirpath": config["path"]["model_dir"],
     "save_top_k": 1,
     "mode": "min",
     "save_last": False,
-    "save_weights_only": False
+    "save_weights_only": False,
 }
 config["trainer"] = {
     "accelerator": "gpu",
@@ -72,7 +74,7 @@ config["trainer"] = {
     "max_epochs": 10,
     "accumulate_grad_batches": 1,
     "deterministic": False,
-    "precision": 32
+    "precision": 32,
 }
 config["datamodule"] = {
     "ClassName": "DataModule",
@@ -84,11 +86,11 @@ config["datamodule"] = {
         "labels": config["labels"],
         "path": config["path"],
         "mean": 0.485,
-        "std": 0.229
+        "std": 0.229,
     },
     "dataloader": {
         "batch_size": 2,
-        "num_workers": 8
+        "num_workers": 8,
     }
 }
 config["Metrics"] = {

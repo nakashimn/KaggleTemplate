@@ -27,8 +27,8 @@ class Trainer:
         self,
         Model: LightningModule,
         DataModule: LightningDataModule,
-        Dataset: Dataset,
-        Augmentation: Augmentation,
+        Data: Dataset,
+        Aug: Augmentation,
         df_train: pd.DataFrame,
         config: dict[str, Any],
     ) -> None:
@@ -40,8 +40,8 @@ class Trainer:
         # Class
         self.Model = Model
         self.DataModule = DataModule
-        self.Dataset = Dataset
-        self.Augmentation = Augmentation
+        self.Dataset = Data
+        self.Augmentation = Aug
 
         # variable
         self.min_loss = MinLoss()
@@ -52,11 +52,15 @@ class Trainer:
         try:
             # idx_train, idx_val = self._split_dataset(self.df_train)
             kfold = sklearn.model_selection.StratifiedKFold(
-                n_splits=5, shuffle=True, random_state=self.config["random_seed"]
+                n_splits=self.config["n_splits"],
+                shuffle=True,
+                random_state=self.config["random_seed"],
             )
             for fold, (idx_train, idx_val) in enumerate(
                 kfold.split(self.df_train, self.df_train["label_id"])
             ):
+                if fold not in self.config["train_folds"]:
+                    continue
                 self._run_unit(fold, idx_train, idx_val)
 
             # train with all data
@@ -132,7 +136,8 @@ class Trainer:
 
     def _create_transforms(self) -> dict[str, Augmentation | None]:
         transforms = {
-            "train": self.Augmentation(self.config["augmentation"]),
+            "train": self.Augmentation(self.config["augmentation"]) \
+                     if self.Augmentation is not None else None,
             "valid": None,
             "pred": None,
         }
@@ -142,7 +147,7 @@ class Trainer:
         self,
         idx_train: list[int] | None = None,
         idx_val: list[int] | None = None,
-        transforms: dict[Augmentation | None] | None = None,
+        transforms: dict[str, Augmentation | None] | None = None,
     ) -> LightningDataModule:
         # fold dataset
         if idx_train is None:
@@ -205,24 +210,29 @@ class Trainer:
     def _define_callbacks(
         self, callback_config: dict[str, Any]
     ) -> list[callbacks.Callback]:
-        # define earlystopping
-        earlystopping = callbacks.EarlyStopping(
-            **callback_config["earlystopping"], **self.config["earlystopping"]
-        )
+        callback_list: list[callbacks.Callback] = []
         # define learning rate monitor
         lr_monitor = callbacks.LearningRateMonitor()
+        callback_list.append(lr_monitor)
+        # define earlystopping
+        if "earlystopping" in self.config.keys():
+            earlystopping = callbacks.EarlyStopping(
+                **callback_config["earlystopping"], **self.config["earlystopping"]
+            )
+            callback_list.append(earlystopping)
         # define check point
-        loss_checkpoint = callbacks.ModelCheckpoint(
-            **callback_config["checkpoint"], **self.config["checkpoint"]
-        )
+        if "checkpoint" in self.config.keys():
+            loss_checkpoint = callbacks.ModelCheckpoint(
+                **callback_config["checkpoint"], **self.config["checkpoint"]
+            )
+            callback_list.append(loss_checkpoint)
         # define model uploader
         model_uploader = ModelUploader(
             model_dir=self.config["path"]["model_dir"],
             every_n_epochs=self.config["upload_every_n_epochs"],
             message=self.config["experiment_name"],
         )
-
-        callback_list = [earlystopping, lr_monitor, loss_checkpoint, model_uploader]
+        callback_list.append(model_uploader)
         return callback_list
 
     def _train(
@@ -292,7 +302,10 @@ class Trainer:
         model.eval()
 
         # define trainer
-        trainer = pl.Trainer(**self.config["trainer"])
+        trainer = pl.Trainer(
+            logger=logger,
+            **self.config["trainer"],
+        )
 
         # validation
         filepath_checkpoint = (
